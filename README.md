@@ -172,8 +172,4 @@ Refer to the respective folders for the learning materials and practical files.
 
 ---
 
-## Note
-
-This repository will be updated with additional learning materials, code implementations, and practical experiments throughout my Agentic AI training journey.
-
 **Learn. Build. Experiment. Grow.**
