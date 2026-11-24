@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 1 · How LLMs work and your first API call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: study notes — sticky lesson index on the left, one readable column; coloured stripes mark analogies (amber), design lens (teal) and warnings (red). */
+:root{
+  --bg:#F5F7F8;
+  --paper:#FFFFFF;
+  --ink:#16222B;
+  --muted:#5B6B76;
+  --line:#D7DFE3;
+  --accent:#0E7C6B;          /* teal: design lens, key path */
+  --accent-soft:#E2F3EF;
+  --warm:#B86A00;            /* amber: analogies */
+  --warm-soft:#FBF0DF;
+  --danger:#B3261E;
+  --danger-soft:#FBE7E5;
+  --code-bg:#0F1A21;
+  --code-ink:#DCE6EA;
+  --panel:#F0F4F5;
+  --font-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151A; --paper:#141E25; --ink:#E4ECEF; --muted:#9AAAB3; --line:#2A3943;
+    --accent:#4CC5AE; --accent-soft:#16332E; --warm:#E7A64A; --warm-soft:#33270F;
+    --danger:#F08B83; --danger-soft:#3A1C1A; --code-bg:#0A1116; --code-ink:#DCE6EA; --panel:#1B2830;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151A; --paper:#141E25; --ink:#E4ECEF; --muted:#9AAAB3; --line:#2A3943;
+  --accent:#4CC5AE; --accent-soft:#16332E; --warm:#E7A64A; --warm-soft:#33270F;
+  --danger:#F08B83; --danger-soft:#3A1C1A; --code-bg:#0A1116; --code-ink:#DCE6EA; --panel:#1B2830;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.62}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+nav.toc{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto;font-size:14.5px;padding-right:6px}
+nav.toc .tt{font-family:var(--font-display);font-weight:800;font-size:15px;letter-spacing:.02em;margin:0 0 10px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:block;padding:5px 10px;border-radius:6px;color:var(--ink);text-decoration:none;border-left:3px solid transparent}
+nav.toc a:hover{background:var(--panel);border-left-color:var(--accent)}
+nav.toc .sub a{padding-left:24px;color:var(--muted);font-size:13.5px}
+main{min-width:0}
+header.hero{padding:8px 0 28px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.eyebrow{font-family:var(--font-mono);font-size:13px;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+h1,h2,h3,h4{font-family:var(--font-display);text-wrap:balance;line-height:1.2}
+h1{font-size:42px;font-weight:800;margin:6px 0 12px}
+h2{font-size:30px;font-weight:800;margin:56px 0 10px;padding-top:12px}
+h3{font-size:22px;font-weight:600;margin:34px 0 8px}
+h4{font-size:18px;font-weight:600;margin:22px 0 6px}
+.lede{font-size:19px;color:var(--muted);max-width:68ch;margin:0}
+p,li{max-width:70ch}
+.lessonno{display:inline-block;font-family:var(--font-mono);font-size:14px;color:var(--paper);background:var(--accent);border-radius:6px;padding:2px 9px;margin-right:10px;vertical-align:middle;position:relative;top:-3px}
+.map{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:18px 0 0;padding:0;list-style:none}
+.map li{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px}
+.map li b{font-family:var(--font-mono);color:var(--accent);margin-right:6px}
+.box{border-radius:10px;padding:14px 18px;margin:18px 0;border-left:5px solid;background:var(--paper)}
+.box > :first-child{margin-top:0}
+.box > :last-child{margin-bottom:0}
+.box .tag{display:block;font-family:var(--font-mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.analogy{border-color:var(--warm);background:var(--warm-soft)}
+.analogy .tag{color:var(--warm)}
+.lens{border-color:var(--accent);background:var(--accent-soft)}
+.lens .tag{color:var(--accent)}
+.warn{border-color:var(--danger);background:var(--danger-soft)}
+.warn .tag{color:var(--danger)}
+.remember{border-color:var(--ink);background:var(--paper);border-left-width:5px;box-shadow:0 1px 0 var(--line)}
+.remember ul{margin:4px 0 0;padding-left:20px}
+.yours{display:inline-block;font-family:var(--font-mono);font-size:11.5px;background:var(--warm);color:var(--paper);border-radius:4px;padding:1px 7px;margin-left:6px;vertical-align:middle;text-transform:none;letter-spacing:0}
+.tablewrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:15.5px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--font-display);font-weight:600;background:var(--panel);font-size:15px}
+tr:last-child td{border-bottom:0}
+td code,p code,li code,th code{font-family:var(--font-mono);font-size:.86em;background:var(--panel);padding:1px 5px;border-radius:4px;word-break:break-word}
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--font-mono);font-size:14px;line-height:1.55;margin:16px 0}
+pre code{font-family:inherit;background:none;padding:0}
+.k{color:#7FC8FF}.s{color:#B5E48C}.c{color:#7C8F99;font-style:italic}.n{color:#F5B971}
+figure{margin:22px 0;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 16px 10px;overflow-x:auto}
+figcaption{font-size:14.5px;color:var(--muted);margin-top:8px;max-width:none}
+svg.dg{display:block;width:100%;max-width:100%;height:auto;min-width:560px;color:var(--ink)}
+svg.dg text{fill:currentColor;font-family:var(--font-body);font-size:13px}
+svg.dg .t-s{font-size:11.5px;fill:var(--muted)}
+svg.dg .t-b{font-weight:700}
+svg.dg .t-m{font-family:var(--font-mono);font-size:12px}
+svg.dg .b{fill:var(--panel);stroke:currentColor;stroke-width:1.2}
+svg.dg .ba{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.8}
+svg.dg .bw{fill:var(--warm-soft);stroke:var(--warm);stroke-width:1.5}
+svg.dg .bd{fill:var(--danger-soft);stroke:var(--danger);stroke-width:1.5}
+svg.dg .ln{stroke:currentColor;stroke-width:1.4;fill:none}
+svg.dg .lna{stroke:var(--accent);stroke-width:2;fill:none}
+svg.dg .dash{stroke:var(--muted);stroke-width:1.2;fill:none;stroke-dasharray:5 4}
+svg.dg .bar{fill:var(--accent)}
+svg.dg .bar2{fill:var(--warm)}
+svg.dg .ah{fill:currentColor}
+svg.dg .aha{fill:var(--accent)}
+details{background:var(--paper);border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:0 16px}
+summary{cursor:pointer;font-weight:700;padding:12px 0}
+details[open]{padding-bottom:12px}
+.qa dt{font-weight:700;margin-top:12px}
+.qa dd{margin:4px 0 0 0;color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.card h4{margin-top:0}
+/* ---------- interactive widgets ---------- */
+.sim{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin:22px 0;overflow:hidden}
+.sim-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.sim-head .ttl{font-family:var(--font-display);font-weight:600;font-size:16px}
+.sim-head .live{font-family:var(--font-mono);font-size:11.5px;color:var(--paper);background:var(--accent);border-radius:4px;padding:2px 7px;letter-spacing:.05em;text-transform:uppercase}
+.sim-body{padding:14px 16px 16px}
+.sim label{font-weight:700;font-size:14.5px}
+.sim textarea,.sim input[type=text]{width:100%;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+.sim textarea:focus,.sim input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:inherit;font-size:14.5px;font-weight:700;border:1px solid var(--accent);background:var(--accent);color:var(--paper);border-radius:8px;padding:7px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0;min-height:34px;font-family:var(--font-mono);font-size:14px}
+.chip{padding:3px 6px;border-radius:5px;white-space:pre;border:1px solid transparent}
+.chip.c0{background:#DDEFFC;color:#11344F}.chip.c1{background:#FBE3C8;color:#4A2A00}.chip.c2{background:#DDF3E4;color:#123D22}.chip.c3{background:#F3DDF3;color:#3F1440}.chip.c4{background:#E7E3FB;color:#231A55}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.stat b{display:block;font-family:var(--font-display);font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.note{font-size:13.5px;color:var(--muted);margin:8px 0 0}
+.tbar{display:grid;grid-template-columns:96px 1fr 52px;gap:8px;align-items:center;margin:5px 0;font-size:14.5px}
+.tbar .track{background:var(--panel);border-radius:4px;height:20px;overflow:hidden}
+.tbar .fill{height:100%;background:var(--accent);border-radius:4px;transition:width .35s ease}
+.tbar .pct{font-family:var(--font-mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.tbar.hit .fill{background:var(--warm)}
+input[type=range]{width:220px;accent-color:var(--accent)}
+.sentence{font-size:18px;padding:10px 12px;background:var(--bg);border-radius:8px;border:1px dashed var(--line);min-height:46px}
+.sentence .new{background:var(--warm-soft);color:var(--warm);font-weight:700;border-radius:4px;padding:0 3px}
+.status{font-size:15px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);border-left:4px solid var(--accent);margin-top:10px;min-height:42px}
+.opts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.opt{font:inherit;font-size:15px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.opt.right{background:var(--accent-soft);border-color:var(--accent)}
+.opt.wrong{background:var(--danger-soft);border-color:var(--danger)}
+.toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px 18px;margin:8px 0}
+.toggles label{font-weight:400;display:flex;gap:8px;align-items:flex-start}
+.result{font-family:var(--font-mono);font-size:13.5px;background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:10px 12px;white-space:pre-wrap;margin-top:8px}
+.cw{display:flex;height:46px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:10px 0;background:var(--bg)}
+.cw div{display:flex;align-items:center;justify-content:center;font-size:12.5px;white-space:nowrap;overflow:hidden;transition:width .3s ease}
+.cw .sys{background:var(--accent-soft)}.cw .his{background:var(--panel)}.cw .doc{background:var(--warm-soft)}.cw .ans{background:var(--accent);color:var(--paper)}.cw .over{background:var(--danger);color:#fff}
+.hist{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+.hist div{font-size:14px;padding:5px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg)}
+.hist .r-system{border-left:4px solid var(--ink)}.hist .r-user{border-left:4px solid var(--accent)}.hist .r-assistant{border-left:4px solid var(--warm)}
+.hist .fresh{animation:pop .5s ease}
+@keyframes pop{from{transform:translateY(-6px);opacity:.2}to{transform:none;opacity:1}}
+/* svg highlight + flowing arrows */
+svg.dg .b,svg.dg .ba,svg.dg .bw,svg.dg .bd{transition:fill .25s ease,stroke .25s ease,stroke-width .25s ease}
+svg.dg .on{fill:var(--warm-soft)!important;stroke:var(--warm)!important;stroke-width:3!important}
+svg.dg.flow .ln,svg.dg.flow .lna{stroke-dasharray:7 5;animation:dash 1.1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-24}}
+@media (prefers-reduced-motion: reduce){
+  svg.dg.flow .ln,svg.dg.flow .lna{animation:none;stroke-dasharray:none}
+  .tbar .fill,.cw div{transition:none}
+  .hist .fresh{animation:none}
+}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}
+@media (max-width: 900px){
+  .shell{grid-template-columns:1fr;gap:10px;padding:20px 16px 60px}
+  nav.toc{position:static;max-height:none;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+  nav.toc .sub{display:none}
+  h1{font-size:32px} h2{font-size:25px}
+  .two{grid-template-columns:1fr}
+}
+/* ---------- Day 1 tutorial additions ---------- */
+:root{--info:#1F5FA8;--info-soft:#E7F0FA}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--info:#7FB2EE;--info-soft:#15263A}}
+:root[data-theme="dark"]{--info:#7FB2EE;--info-soft:#15263A}
+.real{border-color:var(--info);background:var(--info-soft)}
+.real .tag{color:var(--info)}
+.oneline{font-size:19px;font-family:var(--font-display);font-weight:600;border-left:5px solid var(--accent);padding:4px 0 4px 14px;margin:6px 0 16px;max-width:none}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
+.meta span{font-family:var(--font-mono);font-size:12.5px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.meta b{color:var(--ink)}
+/* video player */
+.vid{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin:22px 0;overflow:hidden}
+.vid-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.vid-head .ttl{font-family:var(--font-display);font-weight:600;font-size:16px}
+.vid-head .live{font-family:var(--font-mono);font-size:11.5px;color:var(--paper);background:var(--warm);border-radius:4px;padding:2px 7px;letter-spacing:.05em;text-transform:uppercase}
+.vid-stage{padding:14px 14px 4px;overflow-x:auto;position:relative}
+.vid-stage svg.dg{min-width:600px}
+.vid-cap{min-height:56px;margin:4px 14px 10px;padding:10px 14px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);font-size:16.5px;max-width:none}
+.vid-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.vid-play{min-width:92px}
+.vid-prog{flex:1;min-width:140px;height:8px;background:var(--line);border-radius:4px;cursor:pointer;position:relative}
+.vid-prog div{height:100%;width:0;background:var(--warm);border-radius:4px}
+.vid-time{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vid-bar label{font-size:14px;display:flex;gap:6px;align-items:center}
+svg.dg .ve{opacity:0;transition:opacity .55s ease,transform .9s cubic-bezier(.4,.1,.2,1)}
+svg.dg .ve.show{opacity:1}
+svg.dg .grow{transform-box:fill-box;transform-origin:0 50%;transition:transform .9s cubic-bezier(.4,.1,.2,1)}
+svg.dg .spin{transform-box:view-box;transition:transform .9s cubic-bezier(.4,.1,.2,1)}
+svg.dg .big{font-size:24px;font-family:var(--font-mono)}
+svg.dg .t-l{font-size:15px}
+svg.dg .t-red{fill:var(--danger);font-weight:700}
+svg.dg .t-ok{fill:var(--accent);font-weight:700}
+/* quiz */
+.quiz{margin:26px 0 8px;border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:hidden}
+.quiz-head{padding:10px 16px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:600;display:flex;justify-content:space-between;gap:10px}
+.quiz-head span{font-family:var(--font-mono);font-size:12.5px;color:var(--accent);font-weight:600}
+.mcq{padding:14px 16px;border-bottom:1px solid var(--line)}
+.mcq:last-child{border-bottom:0}
+.mcq .q{font-weight:700;margin:0 0 8px;max-width:none}
+.mcq .choices{display:grid;gap:6px}
+.mcq .choices button{font:inherit;font-size:15.5px;text-align:left;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.mcq .choices button b{font-family:var(--font-mono);color:var(--muted);min-width:1.2em}
+.mcq .choices button:hover:not(:disabled){border-color:var(--accent)}
+.mcq .choices button.right{background:var(--accent-soft);border-color:var(--accent)}
+.mcq .choices button.wrong{background:var(--danger-soft);border-color:var(--danger)}
+.mcq .choices button:disabled{cursor:default}
+.mcq .why{display:none;margin-top:10px;font-size:15px;padding:8px 12px;border-radius:8px;background:var(--panel);max-width:none}
+.mcq.done .why{display:block}
+.mcq .retry{display:none;margin-top:8px}
+.mcq.done .retry{display:inline-block}
+.score{position:sticky;bottom:12px;margin-top:14px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+.score b{font-family:var(--font-display);font-size:22px;color:var(--accent);font-variant-numeric:tabular-nums}
+.score .track{height:6px;background:var(--panel);border-radius:3px;margin-top:6px;overflow:hidden}
+.score .track div{height:100%;width:0;background:var(--accent);transition:width .4s ease}
+.agenda{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:18px 0 0;padding:0;list-style:none;counter-reset:ag}
+.agenda li{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px}
+.agenda li a{text-decoration:none;color:var(--ink)}
+.agenda li b{font-family:var(--font-mono);color:var(--accent);margin-right:6px}
+.agenda li small{display:block;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion: reduce){svg.dg .ve,svg.dg .grow,svg.dg .spin{transition:opacity .2s linear}}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="toc" aria-label="Topics">
+  <p class="tt">Day 1 tutorial</p>
+  <ol>
+    <li><a href="#start">Today at a glance</a></li>
+    <li><a href="#t1">1 · Why AI is everywhere now</a></li>
+    <li><a href="#t2">2 · What an LLM does</a></li>
+    <li><a href="#t3">3 · Tokens</a></li>
+    <li><a href="#t4">4 · Temperature</a></li>
+    <li><a href="#t5">5 · No memory</a></li>
+    <li><a href="#t6">6 · Context window</a></li>
+    <li><a href="#t7">7 · Hallucination</a></li>
+    <li><a href="#t8">8 · The AI engineer</a></li>
+    <li><a href="#t9">9 · Your first API call</a></li>
+    <li><a href="#build">Today's build + your 10%</a></li>
+    <li><a href="#wrap">Summary</a></li>
+  </ol>
+  <div class="score" id="score" aria-live="polite">Quiz score<br><b id="sc-n">0</b> / <span id="sc-t">18</span> correct<div class="track"><div id="sc-bar"></div></div></div>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Ai Agents Workshop · Level 1 Fundamentals · Day 1 of 2</div>
+  <h1>How LLMs work, and your first API call</h1>
+  <p class="lede">Everything you need before building agents: what a large language model really does, why it behaves the way it does, and the five lines of Python that let you use one. Each topic has a real-world example, an analogy, a picture, a short animated video and two quick questions.</p>
+  <div class="meta"><span><b>2 hours</b> · 1 session</span><span>Trainer <b>90%</b> · Students <b>10%</b></span><span>Runs in <b>Google Colab</b></span><span>Case study: <b>Sweet Crumbs Home Bakery</b></span></div>
+</header>
+
+<section id="start">
+  <h2>Today at a glance</h2>
+  <p>Nine short topics, in order. Topics 1–8 build the mental model; topic 9 is the code. Every topic ends with two questions; your score is kept in the side panel.</p>
+  <ol class="agenda">
+    <li><a href="#t1"><b>01</b>Why AI is everywhere now<small>APIs changed everything · 10 min</small></a></li>
+    <li><a href="#t2"><b>02</b>What an LLM does<small>Next-token prediction · 10 min</small></a></li>
+    <li><a href="#t3"><b>03</b>Tokens<small>The unit of cost and limits · 10 min</small></a></li>
+    <li><a href="#t4"><b>04</b>Temperature<small>The creativity dial · 10 min</small></a></li>
+    <li><a href="#t5"><b>05</b>No memory<small>Why the app resends the chat · 10 min</small></a></li>
+    <li><a href="#t6"><b>06</b>Context window<small>The token budget per call · 10 min</small></a></li>
+    <li><a href="#t7"><b>07</b>Hallucination<small>Confident but wrong, and the fix · 15 min</small></a></li>
+    <li><a href="#t8"><b>08</b>The AI engineer<small>Your job, and the 4-step pattern · 10 min</small></a></li>
+    <li><a href="#t9"><b>09</b>Your first API call<small>Line by line in Colab · 25 min</small></a></li>
+  </ol>
+  <div class="box real"><span class="tag">The case study for the whole workshop</span>
+    <p><strong>Sweet Crumbs Home Bakery</strong> takes cake orders on chat, writes them in a notebook and answers the same questions all day. Over the workshop we build it an AI team: a Marketing agent, a Sales &amp; Support agent and an Operations agent. Today we lay the first brick: one API call that answers a bakery question.</p>
+  </div>
+</section>
+
+<!-- ============ T1 ============ -->
+<section id="t1">
+  <h2><span class="lessonno">01</span>Why is AI suddenly everywhere?</h2>
+  <p class="oneline">AI is 70 years old. What is new is that anyone can use a powerful model with a few lines of code.</p>
+  <p>For decades, building AI meant collecting data, hiring PhDs and training your own model for months. Two shifts changed that. First, <strong>one general model now does a thousand jobs</strong>: the same model writes, summarises, translates and explains code. Second, <strong>the barrier collapsed</strong>: AI companies run the giant models on their servers and rent them out through an <strong>API</strong> (your code sends a request, their server sends an answer). Apps built this way are called <strong>wrappers</strong>.</p>
+    <figure>
+    <svg class="dg" viewBox="0 0 760 140" role="img" aria-label="Timeline: research labs from the 1950s to 2000s, the Transformer in 2017, ChatGPT in November 2022, and now anyone can build with AI.">
+      <line class="ln" x1="40" y1="60" x2="720" y2="60"/>
+      <circle cx="95" cy="60" r="7" class="b"/>
+      <circle cx="295" cy="60" r="7" class="b"/>
+      <circle cx="495" cy="60" r="7" class="b"/>
+      <circle cx="680" cy="60" r="9" class="ba"/>
+      <text x="95" y="40" text-anchor="middle" class="t-b">1950s–2000s</text>
+      <text x="295" y="40" text-anchor="middle" class="t-b">2017</text>
+      <text x="495" y="40" text-anchor="middle" class="t-b">Nov 2022</text>
+      <text x="680" y="40" text-anchor="middle" class="t-b">Now</text>
+      <text x="95" y="90" text-anchor="middle">Research labs only</text>
+      <text x="95" y="108" text-anchor="middle" class="t-s">PhD, years, big budgets</text>
+      <text x="295" y="90" text-anchor="middle">Transformer invented</text>
+      <text x="295" y="108" text-anchor="middle" class="t-s">the engine inside GPT, Claude, Gemini</text>
+      <text x="495" y="90" text-anchor="middle">ChatGPT launches</text>
+      <text x="495" y="108" text-anchor="middle" class="t-s">AI goes public</text>
+      <text x="680" y="90" text-anchor="middle">Anyone can build</text>
+      <text x="680" y="108" text-anchor="middle" class="t-s">an API + a few lines</text>
+    </svg>
+    <figcaption>Seventy years of AI compressed: the engine arrived in 2017, public access in 2022, and today you build on top of it.</figcaption>
+  </figure>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>The "Ask" button in a shopping app, a college fee-enquiry bot, a resume checker on a job site: most of these are small teams calling a model through an API, not companies that trained their own AI. At Sweet Crumbs, the owner will never train a model; we will rent one for a few paise a day.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span>
+    <p><strong>Swiggy instead of running a restaurant.</strong> Earlier, to sell biryani you needed your own kitchen. Now you order through Swiggy: the AI companies run the "kitchen" (the model), you place the order (the API call) and build your own brand on top, like a cloud kitchen.</p>
+  </div>
+  <div class="vid" data-vid="v1">
+    <div class="vid-head"><span class="ttl">Watch: 70 years of AI in half a minute</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 220" role="img" aria-label="Animated timeline from research labs to the Transformer, ChatGPT, APIs and you building apps."><defs><marker id="mv1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v1-lab" class="ve" ><rect x="16" y="40" width="128" height="70" rx="8" class="b"/><text x="80.0" y="71.0" text-anchor="middle" class="t-b">Research labs</text><text x="80.0" y="89.0" text-anchor="middle" class="t-s">1950s–2000s</text></g><g id="v1-tr" class="ve" ><rect x="166" y="40" width="128" height="70" rx="8" class="b"/><text x="230.0" y="71.0" text-anchor="middle" class="t-b">Transformer</text><text x="230.0" y="89.0" text-anchor="middle" class="t-s">2017 · the engine</text></g><g id="v1-gpt" class="ve" ><rect x="316" y="40" width="128" height="70" rx="8" class="b"/><text x="380.0" y="71.0" text-anchor="middle" class="t-b">ChatGPT</text><text x="380.0" y="89.0" text-anchor="middle" class="t-s">Nov 2022 · public</text></g><g id="v1-api" class="ve" ><rect x="466" y="40" width="128" height="70" rx="8" class="ba"/><text x="530.0" y="71.0" text-anchor="middle" class="t-b">API</text><text x="530.0" y="89.0" text-anchor="middle" class="t-s">rent the model</text></g><g id="v1-you" class="ve" ><rect x="616" y="40" width="128" height="70" rx="8" class="bw"/><text x="680.0" y="71.0" text-anchor="middle" class="t-b">You</text><text x="680.0" y="89.0" text-anchor="middle" class="t-s">a few lines of code</text></g><g id="v1-a1" class="ve"><line class="ln" x1="144" y1="75" x2="164" y2="75" marker-end="url(#mv1)"/></g><g id="v1-a2" class="ve"><line class="ln" x1="294" y1="75" x2="314" y2="75" marker-end="url(#mv1)"/></g><g id="v1-a3" class="ve"><line class="ln" x1="444" y1="75" x2="464" y2="75" marker-end="url(#mv1)"/></g><g id="v1-a4" class="ve"><line class="ln" x1="594" y1="75" x2="614" y2="75" marker-end="url(#mv1)"/></g><g id="v1-apps" class="ve"><path class="ln" d="M680 110 V135 H380 V158" marker-end="url(#mv1)"/><path class="ln" d="M530 135 V158" marker-end="url(#mv1)"/><path class="ln" d="M680 135 V158" marker-end="url(#mv1)"/><rect x="316" y="160" width="128" height="40" rx="8" class="b"/><text x="380" y="185" text-anchor="middle">Support bot</text><rect x="466" y="160" width="128" height="40" rx="8" class="b"/><text x="530" y="185" text-anchor="middle">Resume matcher</text><rect x="616" y="160" width="128" height="40" rx="8" class="ba"/><text x="680" y="185" text-anchor="middle">Bakery order bot</text></g><g id="v1-years" class="ve"><text x="80" y="150" text-anchor="middle" class="t-s">PhDs · years · big budgets</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>2017 Transformer = the engine; Nov 2022 ChatGPT = AI goes public.</li><li>You don't build the model; you call it through an API.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="c"><p class="q">1. What is the main reason students can build AI apps today?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>AI was invented in 2022</button>
+      <button type="button" data-k="b"><b>B</b>Every laptop now has a powerful GPU</button>
+      <button type="button" data-k="c"><b>C</b>Ready-made models can be used through an API with a few lines of code</button>
+      <button type="button" data-k="d"><b>D</b>Training your own model became free</button></div>
+      <p class="why">AI is decades old and training is still expensive. What changed is access: you call someone else's model through an API.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="b"><p class="q">2. A startup builds a resume checker on top of OpenAI's model. This kind of app is called a…</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Foundation model</button>
+      <button type="button" data-k="b"><b>B</b>Wrapper</button>
+      <button type="button" data-k="c"><b>C</b>Transformer</button>
+      <button type="button" data-k="d"><b>D</b>Training pipeline</button></div>
+      <p class="why">A wrapper is your app wrapped around someone else's model, like a cloud kitchen built on Swiggy.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T2 ============ -->
+<section id="t2">
+  <h2><span class="lessonno">02</span>What an LLM really does</h2>
+  <p class="oneline">An LLM does one thing: it predicts the next piece of text, again and again, in a loop.</p>
+  <p><strong>LLM = Large Language Model.</strong> Give it some text and it scores every possible next piece (token), picks one, adds it to the text and repeats until it decides to stop. Chatting, coding, summarising and translating are all built on this single skill.</p>
+    <figure>
+    <svg class="dg flow" viewBox="0 0 760 190" role="img" aria-label="Text is split into tokens, the model scores every possible next token, one is picked using temperature, appended to the text, and the loop repeats until the answer is complete.">
+      <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <rect id="nt0" x="20" y="30" width="140" height="60" rx="8" class="b"/>
+      <text x="90" y="56" text-anchor="middle" class="t-b">Your text</text>
+      <text x="90" y="75" text-anchor="middle" class="t-s">"capital of India is"</text>
+      <rect id="nt1" x="200" y="30" width="140" height="60" rx="8" class="b"/>
+      <text x="270" y="56" text-anchor="middle" class="t-b">Tokens</text>
+      <text x="270" y="75" text-anchor="middle" class="t-s">pieces of words</text>
+      <rect id="nt2" x="380" y="30" width="170" height="60" rx="8" class="ba"/>
+      <text x="465" y="56" text-anchor="middle" class="t-b">Model scores every</text>
+      <text x="465" y="75" text-anchor="middle" class="t-b">possible next token</text>
+      <rect id="nt3" x="590" y="30" width="150" height="60" rx="8" class="b"/>
+      <text x="665" y="56" text-anchor="middle" class="t-b">Pick one</text>
+      <text x="665" y="75" text-anchor="middle" class="t-s">temperature decides</text>
+      <line class="ln" x1="160" y1="60" x2="198" y2="60" marker-end="url(#a2)"/>
+      <line class="ln" x1="340" y1="60" x2="378" y2="60" marker-end="url(#a2)"/>
+      <line class="ln" x1="550" y1="60" x2="588" y2="60" marker-end="url(#a2)"/>
+      <polyline class="ln" points="665,90 665,145 270,145 270,92" marker-end="url(#a2)"/>
+      <text x="467" y="165" text-anchor="middle">append the picked token ("New"), then repeat: "Delhi", "." … until done</text>
+    </svg>
+    <figcaption>Generation is a loop. That is why ChatGPT's reply appears word by word: you are watching the loop run.</figcaption>
+    <div class="row">
+      <button class="btn" type="button" id="nt-step">Next step</button>
+      <button class="btn ghost" type="button" id="nt-play">Play the loop</button>
+      <button class="btn ghost" type="button" id="nt-reset">Reset</button>
+    </div>
+    <div class="sentence" id="nt-out" aria-live="polite">What is the capital of India? →</div>
+    <div class="status" id="nt-status">Press <strong>Next step</strong> to walk through one turn of the loop.</div>
+  </figure>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>Your phone keyboard suggesting the next word on WhatsApp, and Gmail finishing your sentence in grey, are small versions of the same idea. When ChatGPT's reply appears word by word, you are watching the loop run.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span>
+    <p><strong>Super-autocomplete</strong>, or a game of <em>antakshari</em>: each new word must fit naturally after the ones before it, played thousands of times per answer.</p>
+  </div>
+  <div class="vid" data-vid="v2">
+    <div class="vid-head"><span class="ttl">Watch: one turn of the next-token loop</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 244" role="img" aria-label="Animation: text is split into tokens, the model scores candidates, the top token is appended and the loop repeats."><defs><marker id="mv2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v2-sent" class="ve"><rect x="20" y="16" width="720" height="44" rx="8" class="b"/><text id="v2-st" x="380" y="44" text-anchor="middle" class="t-l">The capital of India is ___</text></g><g id="v2-tok" class="ve"><rect x="170" y="74" width="78" height="30" rx="6" class="bw"/><text x="209" y="94" text-anchor="middle" class="t-m">The</text><rect x="256" y="74" width="78" height="30" rx="6" class="bw"/><text x="295" y="94" text-anchor="middle" class="t-m">capital</text><rect x="342" y="74" width="78" height="30" rx="6" class="bw"/><text x="381" y="94" text-anchor="middle" class="t-m">of</text><rect x="428" y="74" width="78" height="30" rx="6" class="bw"/><text x="467" y="94" text-anchor="middle" class="t-m">India</text><rect x="514" y="74" width="78" height="30" rx="6" class="bw"/><text x="553" y="94" text-anchor="middle" class="t-m">is</text><text x="20" y="94" class="t-s">tokens</text></g><g id="v2-model" class="ve" ><rect x="20" y="124" width="170" height="92" rx="8" class="ba"/><text x="105.0" y="166.0" text-anchor="middle" class="t-b">Model scores</text><text x="105.0" y="184.0" text-anchor="middle" class="t-s">every possible next token</text></g><g id="v2-bars" class="ve"><text id="v2-l1" x="214" y="145" class="t-b">x</text><rect x="300" y="130" width="380" height="20" rx="4" fill="var(--panel)"/><rect id="v2-b1" x="300" y="130" width="380" height="20" rx="4" class="bar grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text id="v2-p1" x="690" y="145" class="t-m">0%</text><text id="v2-l2" x="214" y="177" class="t-b">x</text><rect x="300" y="162" width="380" height="20" rx="4" fill="var(--panel)"/><rect id="v2-b2" x="300" y="162" width="380" height="20" rx="4" class="bar grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text id="v2-p2" x="690" y="177" class="t-m">0%</text><text id="v2-l3" x="214" y="209" class="t-b">x</text><rect x="300" y="194" width="380" height="20" rx="4" fill="var(--panel)"/><rect id="v2-b3" x="300" y="194" width="380" height="20" rx="4" class="bar grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text id="v2-p3" x="690" y="209" class="t-m">0%</text><text x="300" y="232" class="t-s">example scores</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Predict the next token → add it → repeat.</li><li>No hidden database of answers: every reply is generated, piece by piece.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="a"><p class="q">1. At its core, what does an LLM do?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Predicts the next token, one at a time, in a loop</button>
+      <button type="button" data-k="b"><b>B</b>Searches Google and copies the best answer</button>
+      <button type="button" data-k="c"><b>C</b>Looks up answers in a fixed database</button>
+      <button type="button" data-k="d"><b>D</b>Understands meaning exactly like a human</button></div>
+      <p class="why">Everything an LLM writes comes from next-token prediction repeated many times.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="d"><p class="q">2. Why does ChatGPT's answer appear word by word instead of all at once?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>To look more human</button>
+      <button type="button" data-k="b"><b>B</b>Because the internet is slow</button>
+      <button type="button" data-k="c"><b>C</b>It types the answer it already stored</button>
+      <button type="button" data-k="d"><b>D</b>The answer is being generated one token at a time</button></div>
+      <p class="why">Each token is produced by one turn of the loop; streaming shows you each one as soon as it exists.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T3 ============ -->
+<section id="t3">
+  <h2><span class="lessonno">03</span>Tokens: the unit of everything</h2>
+  <p class="oneline">A model reads and writes tokens, pieces of words. You pay per token and every limit is counted in tokens.</p>
+  <p>Common words are one token ("the", "cake"); rare words are split into pieces ("unbelievableness" → "un" + "believ" + "able" + "ness"). <strong>Rule of thumb: 1 token ≈ ¾ of an English word</strong>, so 300 words ≈ 400 tokens. Sub-word pieces keep the vocabulary to a fixed size (about 100,000 pieces) yet can spell any word, even one invented tomorrow.</p>
+    <div class="sim" id="sim-tok">
+    <div class="sim-head"><span class="ttl">Token playground: type and watch the text split</span><span class="live">Live</span></div>
+    <div class="sim-body">
+      <label for="tok-in">Your text</label>
+      <textarea id="tok-in" rows="2">AI Engineering is surprisingly approachable! Unbelievableness is just Lego bricks.</textarea>
+      <div class="row">
+        <button class="btn ghost" type="button" data-tok="AI Engineering is surprisingly approachable! Unbelievableness is just Lego bricks.">English</button>
+        <button class="btn ghost" type="button" data-tok="రేపు 3 షర్టులు ఇస్త్రీ చేయాలి">Telugu</button>
+        <button class="btn ghost" type="button" data-tok="kal 2 cake kavali, eggless pls">Telugu-English mix</button>
+        <button class="btn ghost" type="button" data-tok="def ask(client, model, prompt): return client.chat.completions.create(model=model)">Python code</button>
+      </div>
+      <div class="chips" id="tok-chips" aria-live="polite"></div>
+      <div class="stats">
+        <div class="stat"><b id="tok-n">0</b><span>tokens (approx.)</span></div>
+        <div class="stat"><b id="tok-w">0</b><span>words</span></div>
+        <div class="stat"><b id="tok-c">0</b><span>characters</span></div>
+        <div class="stat"><b id="tok-r">0</b><span>characters per token</span></div>
+      </div>
+      <p class="note">Each coloured chip is one token. This demo splits text with simple rules to show the idea; real tokenizers (byte-pair encoding) learn their pieces from data, so exact counts differ. Notice how long words break into pieces, and how Telugu needs far more tokens per word than English.</p>
+    </div>
+  </div>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>AI providers price per million tokens, separately for input and output. A Telugu or Hindi chatbot needs more tokens than an English one for the same message, so it costs more to run. When we price the Sweet Crumbs bot, tokens are the number we multiply.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p><strong>Lego bricks.</strong> You don't need a special brick for every toy; a standard set builds anything. Tokens are the Lego bricks of language.</p></div>
+  <div class="vid" data-vid="v3">
+    <div class="vid-head"><span class="ttl">Watch: how text becomes tokens</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 220" role="img" aria-label="Animation: a long word splits into four tokens; an English sentence uses few tokens and the same Telugu sentence uses many more, which costs more."><defs><marker id="mv3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v3-word" class="ve"><text x="380" y="60" text-anchor="middle" class="big">unbelievableness</text></g><g id="v3-bricks" class="ve"><rect x="190" y="34" width="60" height="40" rx="6" class="bw"/><text x="220.0" y="60" text-anchor="middle" class="big" style="font-size:20px">un</text><rect x="262" y="34" width="110" height="40" rx="6" class="ba"/><text x="317.0" y="60" text-anchor="middle" class="big" style="font-size:20px">believ</text><rect x="384" y="34" width="84" height="40" rx="6" class="bw"/><text x="426.0" y="60" text-anchor="middle" class="big" style="font-size:20px">able</text><rect x="480" y="34" width="84" height="40" rx="6" class="ba"/><text x="522.0" y="60" text-anchor="middle" class="big" style="font-size:20px">ness</text><text x="584" y="60" class="t-s">= 4 tokens</text></g><g id="v3-en" class="ve"><text x="20" y="118" class="t-b">English</text><rect x="100" y="100" width="68" height="28" rx="6" class="ba"/><text x="134" y="119" text-anchor="middle" class="t-m">I</text><rect x="174" y="100" width="68" height="28" rx="6" class="ba"/><text x="208" y="119" text-anchor="middle" class="t-m"> want</text><rect x="248" y="100" width="68" height="28" rx="6" class="ba"/><text x="282" y="119" text-anchor="middle" class="t-m"> 2</text><rect x="322" y="100" width="68" height="28" rx="6" class="ba"/><text x="356" y="119" text-anchor="middle" class="t-m"> cakes</text></g><g id="v3-te" class="ve"><text x="20" y="172" class="t-b">Telugu</text><rect x="100" y="154" width="44" height="28" rx="6" class="bw"/><text x="122" y="173" text-anchor="middle">నా</text><rect x="150" y="154" width="44" height="28" rx="6" class="bw"/><text x="172" y="173" text-anchor="middle">కు</text><rect x="200" y="154" width="44" height="28" rx="6" class="bw"/><text x="222" y="173" text-anchor="middle"> 2</text><rect x="250" y="154" width="44" height="28" rx="6" class="bw"/><text x="272" y="173" text-anchor="middle"> కే</text><rect x="300" y="154" width="44" height="28" rx="6" class="bw"/><text x="322" y="173" text-anchor="middle">కు</text><rect x="350" y="154" width="44" height="28" rx="6" class="bw"/><text x="372" y="173" text-anchor="middle">లు</text><rect x="400" y="154" width="44" height="28" rx="6" class="bw"/><text x="422" y="173" text-anchor="middle"> కా</text><rect x="450" y="154" width="44" height="28" rx="6" class="bw"/><text x="472" y="173" text-anchor="middle">వా</text><rect x="500" y="154" width="44" height="28" rx="6" class="bw"/><text x="522" y="173" text-anchor="middle">లి</text><text x="100" y="204" class="t-s">same meaning, many more pieces</text></g><g id="v3-cost" class="ve" ><rect x="580" y="96" width="160" height="92" rx="8" class="bd"/><text x="660.0" y="138.0" text-anchor="middle" class="t-b">You pay per token</text><text x="660.0" y="156.0" text-anchor="middle" class="t-s">more tokens = more ₹</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Token ≈ ¾ word ≈ 4 characters (English).</li><li>Cost and limits are in tokens; Indian languages use more of them.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="c"><p class="q">1. About how many tokens is a 300-word English paragraph?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>About 100</button>
+      <button type="button" data-k="b"><b>B</b>About 225</button>
+      <button type="button" data-k="c"><b>C</b>About 400</button>
+      <button type="button" data-k="d"><b>D</b>About 1,200</button></div>
+      <p class="why">1 token ≈ ¾ word, so 300 ÷ 0.75 ≈ 400 tokens. It's always an estimate.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="b"><p class="q">2. The same customer message is sent in English and in Telugu. What usually happens?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Both use exactly the same number of tokens</button>
+      <button type="button" data-k="b"><b>B</b>Telugu uses more tokens, so it costs more</button>
+      <button type="button" data-k="c"><b>C</b>Telugu uses fewer tokens because the script is shorter</button>
+      <button type="button" data-k="d"><b>D</b>Tokens only matter for English</button></div>
+      <p class="why">Tokenizers learn mostly from English text, so other scripts are split into more pieces. Plan for this when pricing an app.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T4 ============ -->
+<section id="t4">
+  <h2><span class="lessonno">04</span>Temperature: the creativity dial</h2>
+  <p class="oneline">Temperature decides how adventurous the model is when it picks the next token.</p>
+  <p>The model gives every possible next token a probability. <strong>Low temperature</strong> (0–0.3) almost always picks the top choice: focused and repeatable. <strong>High temperature</strong> (around 1.0) spreads the chance out: varied and creative. That is why the same question can get different answers.</p>
+    <div class="sim" id="sim-temp">
+    <div class="sim-head"><span class="ttl">Temperature dial: drag it, then sample</span><span class="live">Live</span></div>
+    <div class="sim-body">
+      <div class="row">
+        <label for="t-range">Temperature</label>
+        <input type="range" id="t-range" min="0.1" max="2" step="0.1" value="0.7">
+        <b id="t-val" style="font-family:var(--font-mono);min-width:3ch">0.7</b>
+        <span id="t-mood" class="note" style="margin:0">balanced</span>
+      </div>
+      <div class="row">
+        <button class="btn ghost" type="button" data-t="0.2">0.2 · support bot</button>
+        <button class="btn ghost" type="button" data-t="0.7">0.7 · chat</button>
+        <button class="btn ghost" type="button" data-t="1.2">1.2 · brainstorm</button>
+      </div>
+      <p style="margin:6px 0">Prompt: <strong>"I love building things in ___"</strong></p>
+      <div id="t-bars"></div>
+      <div class="row">
+        <button class="btn" type="button" id="t-sample">Sample a token</button>
+        <button class="btn ghost" type="button" id="t-sample10">Sample 10 times</button>
+      </div>
+      <div class="sentence" id="t-out" aria-live="polite">I love building things in <span class="new">Python</span></div>
+      <p class="note">Probabilities come from fixed example scores passed through softmax with your temperature: p = e^(score/T) ÷ Σ e^(score/T). Low T sharpens the top choice; high T flattens the spread.</p>
+    </div>
+  </div>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>A bank's support bot or a fee-enquiry bot runs at low temperature: the answer must be the same and correct every time. An Instagram caption generator runs high so every caption is different. At Sweet Crumbs, prices and orders use 0.2; Marketing's festival posts can use 1.0.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p>A <strong>strict exam evaluator</strong> (low) accepts only the textbook answer. A <strong>creative-writing teacher</strong> (high) welcomes surprising answers.</p></div>
+  <div class="vid" data-vid="v4">
+    <div class="vid-head"><span class="ttl">Watch: the temperature dial in action</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 230" role="img" aria-label="Animation: at low temperature the model gives the same tagline three times; at high temperature it gives three different taglines."><defs><marker id="mv4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v4-q" class="ve"><text x="20" y="28" class="t-b">Prompt: "Write a one-line tagline for Sweet Crumbs"</text></g><g id="v4-dial" class="ve"><path d="M40 170 A80 80 0 0 1 200 170" class="ln"/><text x="40" y="190" text-anchor="middle" class="t-s">0</text><text x="200" y="190" text-anchor="middle" class="t-s">2</text><g id="v4-needle" class="spin" style="transform-origin:120px 170px;transform:rotate(-60deg)" data-t0="rotate(-60deg)"><line x1="120" y1="170" x2="120" y2="104" class="lna" stroke-width="3"/></g><circle cx="120" cy="170" r="6" class="ba"/><text id="v4-tv" x="120" y="214" text-anchor="middle" class="t-b">T = 0.2</text></g><g id="v4-a1" class="ve"><rect x="260" y="50" width="480" height="46" rx="8" class="b"/><text x="276" y="70" class="t-s">Answer 1</text><text id="v4-t1" x="276" y="88" class="t-l">…</text></g><g id="v4-a2" class="ve"><rect x="260" y="110" width="480" height="46" rx="8" class="b"/><text x="276" y="130" class="t-s">Answer 2</text><text id="v4-t2" x="276" y="148" class="t-l">…</text></g><g id="v4-a3" class="ve"><rect x="260" y="170" width="480" height="46" rx="8" class="b"/><text x="276" y="190" class="t-s">Answer 3</text><text id="v4-t3" x="276" y="208" class="t-l">…</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Facts, prices, scoring → low (0–0.3). Chat → ≈0.7. Ideas, posts → ≈1.0.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="a"><p class="q">1. Which temperature suits a bot that answers students' fee and timing questions?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>0–0.3</button>
+      <button type="button" data-k="b"><b>B</b>About 1.0</button>
+      <button type="button" data-k="c"><b>C</b>1.5–2.0</button>
+      <button type="button" data-k="d"><b>D</b>It makes no difference</button></div>
+      <p class="why">Fee answers must be correct and identical every time, so keep the dial low.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="c"><p class="q">2. Your resume scorer gives a slightly different score each time for the same resume. What should you change first?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Use a bigger model</button>
+      <button type="button" data-k="b"><b>B</b>Send the resume twice</button>
+      <button type="button" data-k="c"><b>C</b>Set temperature to 0</button>
+      <button type="button" data-k="d"><b>D</b>Raise the temperature</button></div>
+      <p class="why">Variation for the same input comes from sampling. Temperature 0 makes the pick as consistent as possible.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T5 ============ -->
+<section id="t5">
+  <h2><span class="lessonno">05</span>The model has no memory</h2>
+  <p class="oneline">Between calls, an LLM forgets everything. Chat apps only look like they remember because the app resends the whole conversation every time.</p>
+  <p>Each API call is independent. If you say "My name is Ravi" in one call and ask "What is my name?" in the next, the model has no idea. ChatGPT seems to remember because the <strong>ChatGPT app</strong> keeps your conversation and sends all of it with every new message. In your own chatbot, <strong>your code</strong> must do this.</p>
+    <figure>
+    <svg class="dg" viewBox="0 0 760 236" role="img" aria-label="The history list grows each call: call 1 sends system and user 1; call 2 adds assistant 1 and user 2; call 3 adds assistant 2 and user 3. Everything is resent every time.">
+      <text x="120" y="22" text-anchor="middle" class="t-b">Call 1 sends</text>
+      <text x="380" y="22" text-anchor="middle" class="t-b">Call 2 sends</text>
+      <text x="640" y="22" text-anchor="middle" class="t-b">Call 3 sends</text>
+      <g>
+        <rect x="40" y="34" width="160" height="26" rx="5" class="b"/><text x="120" y="52" text-anchor="middle">system</text>
+        <rect x="40" y="64" width="160" height="26" rx="5" class="ba"/><text x="120" y="82" text-anchor="middle">user 1</text>
+      </g>
+      <g>
+        <rect x="300" y="34" width="160" height="26" rx="5" class="b"/><text x="380" y="52" text-anchor="middle">system</text>
+        <rect x="300" y="64" width="160" height="26" rx="5" class="b"/><text x="380" y="82" text-anchor="middle">user 1</text>
+        <rect x="300" y="94" width="160" height="26" rx="5" class="ba"/><text x="380" y="112" text-anchor="middle">assistant 1</text>
+        <rect x="300" y="124" width="160" height="26" rx="5" class="ba"/><text x="380" y="142" text-anchor="middle">user 2</text>
+      </g>
+      <g>
+        <rect x="560" y="34" width="160" height="26" rx="5" class="b"/><text x="640" y="52" text-anchor="middle">system</text>
+        <rect x="560" y="64" width="160" height="26" rx="5" class="b"/><text x="640" y="82" text-anchor="middle">user 1</text>
+        <rect x="560" y="94" width="160" height="26" rx="5" class="b"/><text x="640" y="112" text-anchor="middle">assistant 1</text>
+        <rect x="560" y="124" width="160" height="26" rx="5" class="b"/><text x="640" y="142" text-anchor="middle">user 2</text>
+        <rect x="560" y="154" width="160" height="26" rx="5" class="ba"/><text x="640" y="172" text-anchor="middle">assistant 2</text>
+        <rect x="560" y="184" width="160" height="26" rx="5" class="ba"/><text x="640" y="202" text-anchor="middle">user 3</text>
+      </g>
+      <text x="20" y="228" class="t-s">Highlighted = new this turn. prompt_tokens (and cost) grow every call until the context window is full.</text>
+    </svg>
+    <figcaption>The server stays stateless; the caller keeps an append-only conversation log and replays it on every call.</figcaption>
+  </figure>
+  <div class="sim" id="sim-mem">
+    <div class="sim-head"><span class="ttl">Watch the history list grow</span><span class="live">Live</span></div>
+    <div class="sim-body">
+      <div class="row">
+        <button class="btn" type="button" id="mem-next">Send next message</button>
+        <button class="btn ghost" type="button" id="mem-reset">Start over</button>
+        <label style="font-weight:400;display:flex;gap:6px;align-items:center"><input type="checkbox" id="mem-forget"> Forget to resend history (bug)</label>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="mem-calls">0</b><span>calls made</span></div>
+        <div class="stat"><b id="mem-sent">0</b><span>messages sent this call</span></div>
+        <div class="stat"><b id="mem-tok">0</b><span>prompt tokens this call (approx.)</span></div>
+        <div class="stat"><b id="mem-total">0</b><span>prompt tokens so far</span></div>
+      </div>
+      <div class="hist" id="mem-hist" aria-live="polite"></div>
+      <div class="status" id="mem-status"></div>
+    </div>
+  </div>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>When a support chat says "As you mentioned earlier…", that's the app replaying the history, not the model recalling it. If Sweet Crumbs' bot forgets which cake Ravi ordered two messages ago, the bug is in our code, not in the model.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p>A <strong>doctor who never remembers patients</strong>. You still get good treatment because the <strong>receptionist hands over your full case file</strong> at every visit. The doctor is the model; the receptionist is your code.</p></div>
+  <div class="vid" data-vid="v5">
+    <div class="vid-head"><span class="ttl">Watch: the doctor who forgets every patient</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 262" role="img" aria-label="Animation: a doctor forgets a returning patient until the receptionist hands over the case file, just as your code must resend the chat history."><defs><marker id="mv5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v5-doc" class="ve" ><rect x="570" y="96" width="170" height="72" rx="8" class="ba"/><text x="655.0" y="128.0" text-anchor="middle" class="t-b">Doctor</text><text x="655.0" y="146.0" text-anchor="middle" class="t-s">= the model</text></g><g id="v5-db" class="ve"><rect x="520" y="40" width="220" height="40" rx="8" class="bw"/><text id="v5-dbt" x="630" y="65" text-anchor="middle">…</text></g><g id="v5-pat" class="ve" style="transform:translate(0px,0px)" data-t0="translate(0px,0px)"><rect x="40" y="104" width="120" height="56" rx="8" class="b"/><text x="100" y="128" text-anchor="middle" class="t-b">Ravi</text><text x="100" y="146" text-anchor="middle" class="t-s">patient</text><g id="v5-pb" class="ve"><rect x="10" y="50" width="250" height="40" rx="8" class="b"/><text id="v5-pbt" x="135" y="75" text-anchor="middle">…</text></g></g><g id="v5-rec" class="ve" ><rect x="40" y="190" width="170" height="56" rx="8" class="b"/><text x="125.0" y="214.0" text-anchor="middle" class="t-b">Receptionist</text><text x="125.0" y="232.0" text-anchor="middle" class="t-s">= your code</text></g><g id="v5-file" class="ve" style="transform:translate(0px,0px)" data-t0="translate(0px,0px)"><rect x="226" y="198" width="96" height="40" rx="6" class="bw"/><text x="274" y="223" text-anchor="middle" class="t-b">Case file</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>The model is stateless. Memory = your code resending the history.</li><li>Longer history = more tokens on every call = more cost.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="b"><p class="q">1. How does a chatbot "remember" your name from earlier in the chat?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>The model saves it in its memory</button>
+      <button type="button" data-k="b"><b>B</b>The app sends the earlier messages again with the new one</button>
+      <button type="button" data-k="c"><b>C</b>The model is retrained after every message</button>
+      <button type="button" data-k="d"><b>D</b>The API key stores your name</button></div>
+      <p class="why">The model forgets; the app keeps the conversation and resends it every call.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="d"><p class="q">2. Your bot forgets the customer's name after every message. What is the most likely bug?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>The temperature is too low</button>
+      <button type="button" data-k="b"><b>B</b>The model is too small to remember</button>
+      <button type="button" data-k="c"><b>C</b>The API key expired</button>
+      <button type="button" data-k="d"><b>D</b>The code sends only the newest message, not the history</button></div>
+      <p class="why">If the history isn't in the messages list, the model never sees it. Append each question and reply, and send the whole list.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T6 ============ -->
+<section id="t6">
+  <h2><span class="lessonno">06</span>The context window: the size of the desk</h2>
+  <p class="oneline">The context window is the most tokens one call can hold: instructions, history, documents and the reply, together.</p>
+  <p>Every model has a fixed limit, for example 128,000 tokens. Everything you send <strong>and</strong> the answer must fit inside it. Fill it too much and the request is rejected or the reply is cut short. A fuller window is also slower and costs more, because you pay for every input token on every call.</p>
+    <div class="sim" id="sim-cw">
+    <div class="sim-head"><span class="ttl">Fill the context window (128,000 tokens)</span><span class="live">Live</span></div>
+    <div class="sim-body">
+      <div class="row"><label for="cw-doc">Pasted documents</label><input type="range" id="cw-doc" min="0" max="140000" step="2000" value="40000"><b id="cw-doc-v" style="font-family:var(--font-mono)">40,000</b></div>
+      <div class="row"><label for="cw-his">Conversation history</label><input type="range" id="cw-his" min="0" max="60000" step="1000" value="12000"><b id="cw-his-v" style="font-family:var(--font-mono)">12,000</b></div>
+      <div class="cw" id="cw-bar" role="img" aria-label="Context window usage"></div>
+      <div class="row note" style="margin:0;gap:14px"><span><span class="chip" style="background:var(--accent-soft)">&nbsp;</span> system</span><span><span class="chip" style="background:var(--panel);border-color:var(--line)">&nbsp;</span> history</span><span><span class="chip" style="background:var(--warm-soft)">&nbsp;</span> documents</span><span><span class="chip" style="background:var(--accent)">&nbsp;</span> answer (reserved)</span><span><span class="chip" style="background:var(--danger)">&nbsp;</span> no room</span></div>
+      <div class="status" id="cw-status"></div>
+      <p class="note">Fixed in this demo: system message 1,000 tokens and 4,000 tokens reserved for the answer. Each segment is drawn to scale.</p>
+    </div>
+  </div>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>Students paste a whole 300-page PDF, or 50 job descriptions at once, and the tool fails or answers badly. The fix engineers use: send one document at a time, keep only the relevant part, and summarise old chat. Sweet Crumbs' menu and rules are short, so they fit easily.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p>A <strong>5-litre bottle</strong>: you can't pour in more than 5 litres, and the bottle must also hold the reply. Fill it to the top with input and there's no room left for the answer.</p></div>
+  <div class="vid" data-vid="v6">
+    <div class="vid-head"><span class="ttl">Watch: filling the context window</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 214" role="img" aria-label="Animation: system message, history, documents and the reserved answer fill the context window; adding more overflows it."><defs><marker id="mv6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v6-tank" class="ve"><text x="40" y="58" class="t-b">Context window · 128,000 tokens per call</text><rect x="40" y="70" width="640" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="2"/></g><g id="v6-sys" class="ve"><rect x="42" y="72" width="48" height="52" class="ba grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text x="66.0" y="103" text-anchor="middle">system</text></g><g id="v6-his" class="ve"><rect x="90" y="72" width="150" height="52" class="b grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text x="165.0" y="103" text-anchor="middle">history</text></g><g id="v6-doc" class="ve"><rect x="240" y="72" width="340" height="52" class="bw grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text x="410.0" y="103" text-anchor="middle">documents</text></g><g id="v6-ans" class="ve"><rect x="580" y="72" width="98" height="52" class="bar grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text x="629.0" y="103" text-anchor="middle" style="fill:var(--paper)">answer</text></g><g id="v6-over" class="ve"><rect x="680" y="72" width="62" height="52" class="bd grow" style="transform:scaleX(0)" data-t0="scaleX(0)"/><text x="711" y="103" text-anchor="middle" class="t-red">+more</text></g><g id="v6-msg" class="ve"><rect x="40" y="150" width="702" height="46" rx="8" class="bd"/><text x="391" y="178" text-anchor="middle" class="t-b">No room left for the answer: request rejected or reply cut off</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>One budget: instructions + history + documents + answer.</li><li>Too much → rejected or cut off. Send less, smarter.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="c"><p class="q">1. What must fit inside the context window of a single call?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Only the user's question</button>
+      <button type="button" data-k="b"><b>B</b>Only the answer</button>
+      <button type="button" data-k="c"><b>C</b>System message, history, documents and the answer together</button>
+      <button type="button" data-k="d"><b>D</b>Everything the model learned in training</button></div>
+      <p class="why">The window is one budget shared by everything sent plus the reply.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="a"><p class="q">2. A student pastes 50 job descriptions in one prompt and the reply gets cut off. Best fix?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Process one JD at a time and combine the results</button>
+      <button type="button" data-k="b"><b>B</b>Raise the temperature</button>
+      <button type="button" data-k="c"><b>C</b>Paste them twice so the model notices</button>
+      <button type="button" data-k="d"><b>D</b>Remove the system message only</button></div>
+      <p class="why">Too much input leaves no room for the answer. Split the work into smaller calls.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T7 ============ -->
+<section id="t7">
+  <h2><span class="lessonno">07</span>How it learned, and why it sometimes lies confidently</h2>
+  <p class="oneline">The model learned to write text that sounds right, not to check what is true. That gap is called hallucination.</p>
+  <p><strong>Self-supervision:</strong> take any sentence from the internet, hide a word and ask the model to guess it. The original sentence is the answer key, so no human labelling is needed. Doing this billions of times, the model picks up grammar, facts and common sense as a side-effect. Try being the model:</p>
+    <div class="sim" id="sim-blank">
+    <div class="sim-head"><span class="ttl">Be the model: fill in the blank</span><span class="live">Game</span></div>
+    <div class="sim-body">
+      <div class="sentence" id="fb-sent">The barista handed me a hot cup of <strong>______</strong>.</div>
+      <div class="opts" id="fb-opts">
+        <button class="opt" type="button" data-w="coffee">coffee</button>
+        <button class="opt" type="button" data-w="tea">tea</button>
+        <button class="opt" type="button" data-w="shoes">shoes</button>
+        <button class="opt" type="button" data-w="sunshine">sunshine</button>
+      </div>
+      <div id="fb-bars"></div>
+      <div class="status" id="fb-status">Pick the word you think fills the blank. The original sentence on the internet is the answer key.</div>
+      <div class="row"><button class="btn ghost" type="button" id="fb-next">Try another sentence</button></div>
+    </div>
+  </div>
+  <p>The catch: it learned what is <strong>plausible</strong>, not what is <strong>true</strong>. Ask about something it has never seen, such as your bakery's delivery policy, and it may confidently invent an answer. The fix is to <strong>give it the facts at question time</strong> and tell it to answer only from them (this is called <strong>RAG</strong>, and it is not retraining).</p>
+    <figure>
+    <svg class="dg flow" viewBox="0 0 760 200" role="img" aria-label="Comparison: a question alone goes to the model and may produce a plausible but wrong guess; a question plus real facts goes to the model and produces a grounded answer.">
+      <defs><marker id="a4b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <text x="20" y="22" class="t-s">WITHOUT CONTEXT</text>
+      <rect x="20" y="32" width="200" height="52" rx="8" class="b"/><text x="120" y="63" text-anchor="middle">Question only</text>
+      <rect x="290" y="32" width="180" height="52" rx="8" class="b"/><text x="380" y="63" text-anchor="middle">Model's memory</text>
+      <rect x="540" y="32" width="200" height="52" rx="8" class="bd"/><text x="640" y="56" text-anchor="middle" class="t-b">Plausible guess</text><text x="640" y="74" text-anchor="middle" class="t-s">may hallucinate</text>
+      <line class="ln" x1="220" y1="58" x2="288" y2="58" marker-end="url(#a4b)"/>
+      <line class="ln" x1="470" y1="58" x2="538" y2="58" marker-end="url(#a4b)"/>
+      <text x="20" y="122" class="t-s">WITH CONTEXT (RAG)</text>
+      <rect x="20" y="132" width="200" height="52" rx="8" class="ba"/><text x="120" y="155" text-anchor="middle" class="t-b">Question + real facts</text><text x="120" y="173" text-anchor="middle" class="t-s">fee list, resume, web page</text>
+      <rect x="290" y="132" width="180" height="52" rx="8" class="b"/><text x="380" y="155" text-anchor="middle">Model reads the facts</text><text x="380" y="173" text-anchor="middle" class="t-s">"answer only from these"</text>
+      <rect x="540" y="132" width="200" height="52" rx="8" class="ba"/><text x="640" y="156" text-anchor="middle" class="t-b">Grounded answer</text><text x="640" y="174" text-anchor="middle" class="t-s">or "not found"</text>
+      <line class="lna" x1="220" y1="158" x2="288" y2="158" marker-end="url(#a4b)"/>
+      <line class="lna" x1="470" y1="158" x2="538" y2="158" marker-end="url(#a4b)"/>
+    </svg>
+    <figcaption>RAG means pasting the relevant facts into the prompt at question time, like an open-book exam. It is not retraining the model.</figcaption>
+  </figure>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>In 2024, a Canadian tribunal ordered Air Canada to compensate a customer after the airline's website chatbot told him he could claim a bereavement discount after travelling. The airline's actual policy said he couldn't. The company was held responsible for its chatbot's wrong answer. For Sweet Crumbs, a made-up "same-day delivery" promise would be the same kind of mistake.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p>A student in a viva who <strong>bluffs smoothly</strong> instead of saying "I don't know". RAG turns the viva into an <strong>open-book exam</strong>: the answer is on the page in front of them.</p></div>
+  <div class="vid" data-vid="v7">
+    <div class="vid-head"><span class="ttl">Watch: a confident wrong answer, and the fix</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 240" role="img" aria-label="Animation: without the policy, a chatbot invents a refund rule; with the real policy in the prompt, the model answers correctly."><defs><marker id="mv7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v7-l1" class="ve"><text x="20" y="20" class="t-s">WITHOUT THE POLICY</text></g><g id="v7-q1" class="ve" ><rect x="20" y="30" width="230" height="66" rx="8" class="b"/><text x="135.0" y="59.0" text-anchor="middle" class="t-b">Customer asks:</text><text x="135.0" y="77.0" text-anchor="middle" class="t-s">Can I claim the discount later?</text></g><g id="v7-a1" class="ve"><line class="ln" x1="250" y1="63" x2="288" y2="63" marker-end="url(#mv7)"/></g><g id="v7-m1" class="ve" ><rect x="290" y="30" width="170" height="66" rx="8" class="b"/><text x="375.0" y="59.0" text-anchor="middle" class="t-b">Chatbot</text><text x="375.0" y="77.0" text-anchor="middle" class="t-s">no policy in the prompt</text></g><g id="v7-a2" class="ve"><line class="ln" x1="460" y1="63" x2="498" y2="63" marker-end="url(#mv7)"/></g><g id="v7-r1" class="ve" ><rect x="500" y="30" width="240" height="66" rx="8" class="bd"/><text x="620.0" y="59.0" text-anchor="middle" class="t-b">"Yes, apply within 90 days."</text><text x="620.0" y="77.0" text-anchor="middle" class="t-s">sounds right…</text></g><g id="v7-stamp" class="ve"><text x="620" y="118" text-anchor="middle" class="t-red">WRONG: the real policy says no</text></g><g id="v7-l2" class="ve"><text x="20" y="150" class="t-s">WITH THE POLICY (RAG)</text></g><g id="v7-q2" class="ve" ><rect x="20" y="160" width="230" height="66" rx="8" class="ba"/><text x="135.0" y="189.0" text-anchor="middle" class="t-b">Question + real policy</text><text x="135.0" y="207.0" text-anchor="middle" class="t-s">"not after travel"</text></g><g id="v7-a3" class="ve"><line class="ln" x1="250" y1="193" x2="288" y2="193" marker-end="url(#mv7)"/></g><g id="v7-m2" class="ve" ><rect x="290" y="160" width="170" height="66" rx="8" class="b"/><text x="375.0" y="189.0" text-anchor="middle" class="t-b">Model</text><text x="375.0" y="207.0" text-anchor="middle" class="t-s">answer only from this</text></g><g id="v7-a4" class="ve"><line class="ln" x1="460" y1="193" x2="498" y2="193" marker-end="url(#mv7)"/></g><g id="v7-r2" class="ve" ><rect x="500" y="160" width="240" height="66" rx="8" class="ba"/><text x="620.0" y="189.0" text-anchor="middle" class="t-b">"It must be requested</text><text x="620.0" y="207.0" text-anchor="middle" class="t-s">before you travel."</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Hallucination = confident, fluent, wrong.</li><li>Fixes: give the facts (RAG), allow "not found", low temperature, verify anything sent to a customer.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="b"><p class="q">1. Why does an LLM sometimes give a confident but wrong answer?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>It is programmed to lie when unsure</button>
+      <button type="button" data-k="b"><b>B</b>It learned to produce plausible text, not to check facts</button>
+      <button type="button" data-k="c"><b>C</b>Its internet connection failed</button>
+      <button type="button" data-k="d"><b>D</b>The temperature is always 2.0</button></div>
+      <p class="why">Training rewarded likely-sounding text. Without the real facts, likely-sounding can be wrong.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="c"><p class="q">2. The bakery bot invents delivery charges. What is the best fix?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Retrain the model on bakery data</button>
+      <button type="button" data-k="b"><b>B</b>Raise the temperature</button>
+      <button type="button" data-k="c"><b>C</b>Put the real delivery policy in the prompt and say "if it's not here, say you'll check"</button>
+      <button type="button" data-k="d"><b>D</b>Ask the question twice</button></div>
+      <p class="why">Give the facts at question time (RAG) and allow "not found". No retraining needed.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T8 ============ -->
+<section id="t8">
+  <h2><span class="lessonno">08</span>The AI engineer: where you fit</h2>
+  <p class="oneline">An AI engineer builds real products on top of ready-made models, without training those models.</p>
+  <p>Someone else builds the model; you build the product around it. Your daily work: <strong>pick the model</strong> (good, fast and cheap enough), <strong>write the prompts</strong>, <strong>give it the right context</strong>, <strong>control cost</strong>, <strong>make it reliable</strong> and <strong>ship it</strong> as a web app, Android app or Telegram bot.</p>
+    <figure>
+    <svg class="dg" viewBox="0 0 760 196" role="img" aria-label="Three layers: the model is the engine built by ML engineers; the AI product is the car built by AI engineers; the app, database and servers are the road built by software engineers.">
+      <rect x="120" y="14" width="520" height="50" rx="8" class="b"/>
+      <text x="380" y="36" text-anchor="middle" class="t-b">Engine · the model</text>
+      <text x="380" y="54" text-anchor="middle" class="t-s">ML engineers / data scientists: datasets, GPUs, training</text>
+      <rect x="60" y="74" width="640" height="50" rx="8" class="ba"/>
+      <text x="380" y="96" text-anchor="middle" class="t-b">Car · the AI product  ← you</text>
+      <text x="380" y="114" text-anchor="middle" class="t-s">AI engineers: model choice, prompts, context, cost, reliability</text>
+      <rect x="20" y="134" width="720" height="50" rx="8" class="b"/>
+      <text x="380" y="156" text-anchor="middle" class="t-b">Road · app, database, servers</text>
+      <text x="380" y="174" text-anchor="middle" class="t-s">Software engineers: code quality, users, scaling</text>
+    </svg>
+    <figcaption>The AI engineer builds the car around an engine someone else built, and is increasingly a software engineer who also speaks fluent "model".</figcaption>
+  </figure>
+  <p>Every AI product, from a coding assistant to a bakery order bot, follows the same four steps:</p>
+    <figure>
+    <svg class="dg flow" viewBox="0 0 760 120" role="img" aria-label="Four steps every AI product follows: connect to a model, give it the right context, get a useful answer, wrap it in a user interface.">
+      <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <rect x="15" y="25" width="160" height="66" rx="8" class="b"/><text x="95" y="52" text-anchor="middle" class="t-b">1. Connect</text><text x="95" y="72" text-anchor="middle" class="t-s">API call to a model</text>
+      <rect x="205" y="25" width="160" height="66" rx="8" class="ba"/><text x="285" y="52" text-anchor="middle" class="t-b">2. Give context</text><text x="285" y="72" text-anchor="middle" class="t-s">the data it needs</text>
+      <rect x="395" y="25" width="160" height="66" rx="8" class="b"/><text x="475" y="52" text-anchor="middle" class="t-b">3. Get the answer</text><text x="475" y="72" text-anchor="middle" class="t-s">read the response</text>
+      <rect x="585" y="25" width="160" height="66" rx="8" class="b"/><text x="665" y="52" text-anchor="middle" class="t-b">4. Wrap in a UI</text><text x="665" y="72" text-anchor="middle" class="t-s">web, Android, bot</text>
+      <line class="ln" x1="175" y1="58" x2="203" y2="58" marker-end="url(#a5)"/>
+      <line class="ln" x1="365" y1="58" x2="393" y2="58" marker-end="url(#a5)"/>
+      <line class="ln" x1="555" y1="58" x2="583" y2="58" marker-end="url(#a5)"/>
+    </svg>
+    <figcaption>A coding tool, a legal-document reader and an order chatbot differ only in step 2 (the context) and step 4 (the interface).</figcaption>
+  </figure>
+  <div class="box real"><span class="tag">Real world</span>
+    <p>Sweet Crumbs in the four steps: <strong>connect</strong> to a model on Groq · <strong>give context</strong>: menu, prices, rules · <strong>get the answer</strong>: "Yes, all our cakes come eggless" · <strong>wrap it</strong> in a Telegram bot. The same steps build a tuition-centre bot or a resume matcher; only the context and the interface change.</p>
+  </div>
+  <div class="box analogy"><span class="tag">Analogy</span><p>A <strong>film director</strong> doesn't build cameras. They pick actors (models), write the script (prompts), set the scene (context), keep the budget (tokens) and deliver the film (the product).</p></div>
+  <div class="vid" data-vid="v8">
+    <div class="vid-head"><span class="ttl">Watch: the 4 steps behind every AI product</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 216" role="img" aria-label="Animation: the four steps connect, give context, get the answer and wrap in a user interface, shown for the Sweet Crumbs bot."><defs><marker id="mv8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v8-s1" class="ve" ><rect x="15" y="30" width="160" height="80" rx="8" class="b"/><text x="95.0" y="66.0" text-anchor="middle" class="t-b">1. Connect</text><text x="95.0" y="84.0" text-anchor="middle" class="t-s">OpenAI(api_key, base_url)</text></g><g id="v8-a1" class="ve"><line class="ln" x1="175" y1="70" x2="203" y2="70" marker-end="url(#mv8)"/></g><g id="v8-s2" class="ve" ><rect x="205" y="30" width="160" height="80" rx="8" class="ba"/><text x="285.0" y="66.0" text-anchor="middle" class="t-b">2. Give context</text><text x="285.0" y="84.0" text-anchor="middle" class="t-s">menu, prices, rules</text></g><g id="v8-a2" class="ve"><line class="ln" x1="365" y1="70" x2="393" y2="70" marker-end="url(#mv8)"/></g><g id="v8-s3" class="ve" ><rect x="395" y="30" width="160" height="80" rx="8" class="b"/><text x="475.0" y="66.0" text-anchor="middle" class="t-b">3. Get the answer</text><text x="475.0" y="84.0" text-anchor="middle" class="t-s">"Yes, eggless is available"</text></g><g id="v8-a3" class="ve"><line class="ln" x1="555" y1="70" x2="583" y2="70" marker-end="url(#mv8)"/></g><g id="v8-s4" class="ve" ><rect x="585" y="30" width="160" height="80" rx="8" class="b"/><text x="665.0" y="66.0" text-anchor="middle" class="t-b">4. Wrap in a UI</text><text x="665.0" y="84.0" text-anchor="middle" class="t-s">Telegram bot</text></g><g id="v8-all" class="ve"><rect x="15" y="150" width="730" height="50" rx="8" class="bw"/><text x="380" y="180" text-anchor="middle" class="t-b">Same 4 steps for a tuition bot, a resume matcher, a support desk…</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Engine = model (ML engineers). Car = product (you). Road = app and servers (software engineers).</li><li>Connect → context → answer → interface.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="d"><p class="q">1. What does an AI engineer mainly do?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Train new models from scratch on GPUs</button>
+      <button type="button" data-k="b"><b>B</b>Design computer chips</button>
+      <button type="button" data-k="c"><b>C</b>Only write prompts</button>
+      <button type="button" data-k="d"><b>D</b>Build products on existing models: prompts, context, cost, reliability</button></div>
+      <p class="why">The AI engineer builds the car around someone else's engine.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="b"><p class="q">2. A tuition-centre bot and the Sweet Crumbs bot are built the same way. What mainly changes between them?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>The programming language</button>
+      <button type="button" data-k="b"><b>B</b>The context (facts, rules) and the interface</button>
+      <button type="button" data-k="c"><b>C</b>The model must be retrained for each</button>
+      <button type="button" data-k="d"><b>D</b>Nothing at all</button></div>
+      <p class="why">Steps 1 and 3 stay the same; step 2 (the context) and step 4 (the interface) are what make each product different.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ T9 ============ -->
+<section id="t9">
+  <h2><span class="lessonno">09</span>Your first API call, line by line</h2>
+  <p class="oneline">Four steps: bring the tools → unlock your key → set up the client → ask and print.</p>
+  <h3>Step 0 · Put your key in Colab Secrets</h3>
+  <ol>
+    <li>Get a free key at <strong>console.groq.com → API Keys</strong>. Your key is your password and your bill: never share it.</li>
+    <li>In Colab, click the <strong>key icon</strong> in the left bar → <strong>Add new secret</strong> → name <code>GROQ_API_KEY</code>, paste the key, switch on <strong>Notebook access</strong>.</li>
+    <li>Never paste the key into the code. A key on GitHub is found by bots within minutes.</li>
+  </ol>
+  <h3>The program</h3>
+<pre><code class="py">!pip install -q openai                           # once per Colab session
+
+from google.colab import userdata                # reads Colab Secrets
+from openai import OpenAI                        # the client class
+
+client = OpenAI(
+    api_key=userdata.get("GROQ_API_KEY"),        # who you are, who pays
+    base_url="https://api.groq.com/openai/v1",   # send requests to Groq, not OpenAI
+)
+
+response = client.chat.completions.create(
+    model="openai/gpt-oss-20b",                  # which model answers
+    messages=[
+        {"role": "system", "content": "You are a funny joker"},
+        {"role": "user",   "content": "tell me a joke"},
+    ],
+)
+print(response.choices[0].message.content)       # the reply text</code></pre>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Line</th><th>What it does</th><th>Analogy</th></tr></thead>
+    <tbody>
+      <tr><td><code>pip install openai</code></td><td>Installs the library that talks to OpenAI-style APIs (Groq uses the same format)</td><td>Buying the phone</td></tr>
+      <tr><td><code>userdata.get(...)</code></td><td>Reads your key from Colab Secrets, so it never appears in the code</td><td>Taking the key out of a locker</td></tr>
+      <tr><td><code>OpenAI(...)</code></td><td>Creates a client object and stores the key and server address inside it. <strong>No network call yet.</strong></td><td>Setting up the phone: SIM + number to dial</td></tr>
+      <tr><td><code>.create(...)</code></td><td>Sends <strong>one</strong> request: model + messages. Waits for the reply.</td><td>Making the call</td></tr>
+      <tr><td><code>messages</code></td><td>The conversation: <code>system</code> = your instructions, <code>user</code> = the question, <code>assistant</code> = earlier replies</td><td>A stage-play script</td></tr>
+      <tr><td><code>response.choices[0].message.content</code></td><td>Digs the reply text out of the response object</td><td>Parcel → packet → envelope → letter</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box lens"><span class="tag">Design lens (for those who know OOP)</span>
+    <p><code>openai</code> is the package, <code>OpenAI</code> the class (a blueprint), <code>client</code> the object. The client is a <strong>Facade</strong> over HTTP, JSON, authentication and retries; <code>chat</code> and <code>completions</code> are nested objects (<strong>composition</strong>); the key is passed in by <strong>constructor injection</strong>, read from configuration outside the code.</p>
+  </div>
+
+  <h3>Where does the constructor get the key and address?</h3>
+    <figure>
+    <svg class="dg" viewBox="0 0 760 210" role="img" aria-label="Constructor lookup order: first a value passed in the brackets, then an environment variable, then the built-in default; for the API key there is no default, so it raises an error.">
+      <defs><marker id="a74" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <rect id="lk1" x="30" y="16" width="320" height="46" rx="8" class="b"/><text x="190" y="44" text-anchor="middle"><tspan class="t-b">1.</tspan> Passed in the brackets?</text>
+      <rect id="lk2" x="30" y="86" width="320" height="46" rx="8" class="b"/><text x="190" y="107" text-anchor="middle"><tspan class="t-b">2.</tspan> Environment variable set?</text><text x="190" y="124" text-anchor="middle" class="t-s">OPENAI_API_KEY / OPENAI_BASE_URL</text>
+      <rect id="lk3" x="30" y="156" width="320" height="46" rx="8" class="b"/><text x="190" y="177" text-anchor="middle"><tspan class="t-b">3.</tspan> Built-in default</text><text x="190" y="194" text-anchor="middle" class="t-s">base_url → api.openai.com/v1 · api_key → error</text>
+      <rect id="lr1" x="470" y="16" width="260" height="46" rx="8" class="ba"/><text x="600" y="44" text-anchor="middle" class="t-b">Use it (wins)</text>
+      <rect id="lr2" x="470" y="86" width="260" height="46" rx="8" class="ba"/><text x="600" y="114" text-anchor="middle" class="t-b">Use it</text>
+      <rect id="lr3" x="470" y="156" width="260" height="46" rx="8" class="bd"/><text x="600" y="177" text-anchor="middle" class="t-b">Default URL, or</text><text x="600" y="194" text-anchor="middle" class="t-s">OpenAIError for a missing key</text>
+      <line class="ln" x1="350" y1="39" x2="468" y2="39" marker-end="url(#a74)"/><text x="409" y="33" text-anchor="middle" class="t-s">yes</text>
+      <line class="ln" x1="350" y1="109" x2="468" y2="109" marker-end="url(#a74)"/><text x="409" y="103" text-anchor="middle" class="t-s">yes</text>
+      <line class="ln" x1="350" y1="179" x2="468" y2="179" marker-end="url(#a74)"/>
+      <line class="ln" x1="190" y1="62" x2="190" y2="84" marker-end="url(#a74)"/><text x="200" y="77" class="t-s">no</text>
+      <line class="ln" x1="190" y1="132" x2="190" y2="154" marker-end="url(#a74)"/><text x="200" y="147" class="t-s">no</text>
+    </svg>
+    <figcaption>First match wins, separately for the key and the address. The address has a default; a personal key cannot.</figcaption>
+    <div class="sim" style="margin:12px 0 4px">
+      <div class="sim-head"><span class="ttl">Try it: what does the constructor end up with?</span><span class="live">Live</span></div>
+      <div class="sim-body">
+        <div class="toggles">
+          <label><input type="checkbox" id="lk-arg-key" checked> Pass <code>api_key=os.getenv("GROQ_API_KEY")</code></label>
+          <label><input type="checkbox" id="lk-env-key"> <code>OPENAI_API_KEY</code> is in the environment</label>
+          <label><input type="checkbox" id="lk-arg-url" checked> Pass <code>base_url="https://api.groq.com/openai/v1"</code></label>
+          <label><input type="checkbox" id="lk-env-url"> <code>OPENAI_BASE_URL</code> is in the environment</label>
+        </div>
+        <div class="result" id="lk-out" aria-live="polite"></div>
+        <p class="note">The diagram highlights where the <strong>api_key</strong> was found.</p>
+      </div>
+    </div>
+  </figure>
+  <h3>What happens when you call <code>.create()</code></h3>
+    <figure>
+    <svg class="dg flow" viewBox="0 0 760 210" role="img" aria-label="Request journey: your code calls create, the library builds JSON with an Authorization header, sends an HTTPS POST to base_url/chat/completions, Groq runs the model, a JSON reply returns, the library parses it into a ChatCompletion with retries on errors, and your code reads the response.">
+      <defs><marker id="a75b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <rect id="rj0" x="10" y="20" width="165" height="62" rx="8" class="b"/><text x="92" y="45" text-anchor="middle" class="t-b">Your code</text><text x="92" y="65" text-anchor="middle" class="t-s t-m">create(model, messages)</text>
+      <rect id="rj1" x="200" y="20" width="165" height="62" rx="8" class="b"/><text x="282" y="45" text-anchor="middle" class="t-b">Library packs</text><text x="282" y="65" text-anchor="middle" class="t-s">JSON + Bearer key header</text>
+      <rect id="rj2" x="390" y="20" width="165" height="62" rx="8" class="b"/><text x="472" y="45" text-anchor="middle" class="t-b">HTTPS POST</text><text x="472" y="65" text-anchor="middle" class="t-s">base_url/chat/completions</text>
+      <rect id="rj3" x="580" y="20" width="170" height="62" rx="8" class="ba"/><text x="665" y="45" text-anchor="middle" class="t-b">Groq server</text><text x="665" y="65" text-anchor="middle" class="t-s">model runs the token loop</text>
+      <rect id="rj4" x="580" y="130" width="170" height="62" rx="8" class="b"/><text x="665" y="155" text-anchor="middle" class="t-b">JSON reply</text><text x="665" y="175" text-anchor="middle" class="t-s">choices + usage</text>
+      <rect id="rj5" x="300" y="130" width="230" height="62" rx="8" class="b"/><text x="415" y="155" text-anchor="middle" class="t-b">Library parses</text><text x="415" y="175" text-anchor="middle" class="t-s">→ ChatCompletion · retries 429/5xx</text>
+      <rect id="rj6" x="10" y="130" width="240" height="62" rx="8" class="ba"/><text x="130" y="155" text-anchor="middle" class="t-b">Your code reads</text><text x="130" y="175" text-anchor="middle" class="t-s t-m">response.choices[0]…</text>
+      <line class="ln" x1="175" y1="51" x2="198" y2="51" marker-end="url(#a75b)"/>
+      <line class="ln" x1="365" y1="51" x2="388" y2="51" marker-end="url(#a75b)"/>
+      <line class="ln" x1="555" y1="51" x2="578" y2="51" marker-end="url(#a75b)"/>
+      <line class="ln" x1="665" y1="82" x2="665" y2="128" marker-end="url(#a75b)"/>
+      <line class="ln" x1="580" y1="161" x2="532" y2="161" marker-end="url(#a75b)"/>
+      <line class="ln" x1="300" y1="161" x2="252" y2="161" marker-end="url(#a75b)"/>
+      <text x="700" y="110" class="t-s">wait (blocking)</text>
+    </svg>
+    <figcaption>The call is synchronous: your program pauses on this line until the reply arrives (<code>AsyncOpenAI</code> exists for non-blocking code).</figcaption>
+    <div class="row">
+      <button class="btn" type="button" id="rj-go">Send request</button>
+      <label style="font-weight:400;display:flex;gap:6px;align-items:center"><input type="checkbox" id="rj-429"> Simulate a 429 rate limit first</label>
+    </div>
+    <div class="status" id="rj-status" aria-live="polite">Press <strong>Send request</strong> to watch one call travel to Groq and back.</div>
+  </figure>
+  <h3>Opening the reply</h3>
+    <figure>
+    <svg class="dg" viewBox="0 0 760 236" role="img" aria-label="Response tree: response is a ChatCompletion with id, model and usage; its choices list holds Choice number zero with finish_reason; the Choice has a message with role and tool_calls; the message's content is the text you want.">
+      <defs><marker id="a78" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs>
+      <rect id="rt0" x="10" y="30" width="135" height="50" rx="8" class="b"/><text x="77" y="52" text-anchor="middle" class="t-m">response</text><text x="77" y="69" text-anchor="middle" class="t-s">ChatCompletion</text>
+      <rect id="rt1" x="165" y="30" width="125" height="50" rx="8" class="b"/><text x="227" y="52" text-anchor="middle" class="t-m">.choices</text><text x="227" y="69" text-anchor="middle" class="t-s">list</text>
+      <rect id="rt2" x="310" y="30" width="125" height="50" rx="8" class="b"/><text x="372" y="52" text-anchor="middle" class="t-m">[0]</text><text x="372" y="69" text-anchor="middle" class="t-s">Choice</text>
+      <rect id="rt3" x="455" y="30" width="140" height="50" rx="8" class="b"/><text x="525" y="52" text-anchor="middle" class="t-m">.message</text><text x="525" y="69" text-anchor="middle" class="t-s">assistant message</text>
+      <rect id="rt4" x="615" y="30" width="135" height="50" rx="8" class="ba"/><text x="682" y="52" text-anchor="middle" class="t-m t-b">.content</text><text x="682" y="69" text-anchor="middle" class="t-s">str | None</text>
+      <line class="lna" x1="145" y1="55" x2="163" y2="55" marker-end="url(#a78)"/>
+      <line class="lna" x1="290" y1="55" x2="308" y2="55" marker-end="url(#a78)"/>
+      <line class="lna" x1="435" y1="55" x2="453" y2="55" marker-end="url(#a78)"/>
+      <line class="lna" x1="595" y1="55" x2="613" y2="55" marker-end="url(#a78)"/>
+      <polyline class="ln" points="40,80 40,215"/>
+      <rect x="55" y="100" width="130" height="28" rx="6" class="b"/><text x="120" y="119" text-anchor="middle" class="t-m">.id</text>
+      <rect x="55" y="140" width="130" height="28" rx="6" class="b"/><text x="120" y="159" text-anchor="middle" class="t-m">.model</text>
+      <rect x="55" y="180" width="130" height="28" rx="6" class="bw"/><text x="120" y="199" text-anchor="middle" class="t-m">.usage (tokens)</text>
+      <line class="ln" x1="40" y1="114" x2="55" y2="114"/><line class="ln" x1="40" y1="154" x2="55" y2="154"/><line class="ln" x1="40" y1="194" x2="55" y2="194"/>
+      <polyline class="ln" points="372,80 372,114 385,114"/>
+      <rect x="385" y="100" width="150" height="28" rx="6" class="bw"/><text x="460" y="119" text-anchor="middle" class="t-m">.finish_reason</text>
+      <polyline class="ln" points="525,80 525,150 560,150"/>
+      <rect x="560" y="136" width="120" height="28" rx="6" class="b"/><text x="620" y="155" text-anchor="middle" class="t-m">.role</text>
+      <polyline class="ln" points="525,150 525,190 560,190"/>
+      <rect x="560" y="176" width="120" height="28" rx="6" class="b"/><text x="620" y="195" text-anchor="middle" class="t-m">.tool_calls</text>
+    </svg>
+    <figcaption>The highlighted path is <code>response.choices[0].message.content</code>: dots for attributes, brackets for list positions.</figcaption>
+    <div class="row"><button class="btn" type="button" id="rt-go">Walk the path</button></div>
+    <div class="result" id="rt-out" aria-live="polite">response</div>
+  </figure>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Common error</th><th>Meaning</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>"api_key client option must be set"</td><td>The key was never loaded</td><td>Check the secret's name and that Notebook access is on</td></tr>
+      <tr><td><code>401</code> AuthenticationError</td><td>Wrong or expired key</td><td>Create a new key</td></tr>
+      <tr><td><code>404</code> model not found</td><td>Old or misspelt model name</td><td>Check names with <code>client.models.list()</code></td></tr>
+      <tr><td><code>429</code> RateLimitError</td><td>Too many requests on one key</td><td>Wait and retry; one key per student</td></tr>
+    </tbody>
+  </table></div>
+  <div class="vid" data-vid="v9">
+    <div class="vid-head"><span class="ttl">Watch: the journey of one API call</span><span class="live">Animated video</span></div>
+    <div class="vid-stage"><svg class="dg" viewBox="0 0 760 246" role="img" aria-label="Animation: create() packs a JSON request with your API key, posts it to Groq, the model runs, a JSON reply returns and you open it to the content."><defs><marker id="mv9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker></defs><g id="v9-lap" class="ve" ><rect x="20" y="70" width="170" height="90" rx="8" class="b"/><text x="105.0" y="111.0" text-anchor="middle" class="t-b">Your Colab notebook</text><text x="105.0" y="129.0" text-anchor="middle" class="t-s">create(model, messages)</text></g><g id="v9-srv" class="ve" ><rect x="570" y="70" width="170" height="90" rx="8" class="ba"/><text x="655.0" y="111.0" text-anchor="middle" class="t-b">Groq server</text><text x="655.0" y="129.0" text-anchor="middle" class="t-s">runs the model</text></g><g id="v9-env" class="ve" style="transform:translate(0px,0px)" data-t0="translate(0px,0px)"><rect x="200" y="88" width="130" height="54" rx="6" class="bw"/><text x="265" y="110" text-anchor="middle" class="t-b">JSON request</text><text x="265" y="128" text-anchor="middle" class="t-s">model + messages</text><g id="v9-key" class="ve"><rect x="290" y="76" width="56" height="22" rx="4" class="bd"/><text x="318" y="91" text-anchor="middle" class="t-s">API key</text></g></g><g id="v9-path" class="ve"><text x="380" y="50" text-anchor="middle" class="t-m">POST api.groq.com/openai/v1/chat/completions</text></g><g id="v9-rep" class="ve" style="transform:translate(0px,0px)" data-t0="translate(0px,0px)"><rect x="430" y="88" width="130" height="54" rx="6" class="ba"/><text x="495" y="110" text-anchor="middle" class="t-b">JSON reply</text><text x="495" y="128" text-anchor="middle" class="t-s">choices + usage</text></g><g id="v9-open" class="ve"><rect x="20" y="186" width="720" height="44" rx="8" class="b"/><text x="380" y="213" text-anchor="middle" class="t-m">response → .choices[0] → .message → .content = "Why did the cake…"</text></g></svg></div>
+    <p class="vid-cap" aria-live="polite">Press Play to start.</p>
+    <div class="vid-bar"><button class="btn vid-play" type="button">Play</button><div class="vid-prog" title="Click to jump"><div></div></div><span class="vid-time">0:00</span><label><input type="checkbox" class="vid-voice"> Narrate aloud</label></div>
+  </div>
+  <div class="box remember"><span class="tag">Remember</span>
+    <ul><li>Constructor = set up once, no network. <code>create()</code> = one request, one reply.</li><li>The text is in <code>response.choices[0].message.content</code>.</li></ul>
+  </div>
+  <div class="quiz"><div class="quiz-head">Check yourself<span>2 questions</span></div>
+    <div class="mcq" data-ans="c"><p class="q">1. In this program, which line actually sends a request over the internet?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b><code>from openai import OpenAI</code></button>
+      <button type="button" data-k="b"><b>B</b><code>client = OpenAI(api_key=..., base_url=...)</code></button>
+      <button type="button" data-k="c"><b>C</b><code>client.chat.completions.create(...)</code></button>
+      <button type="button" data-k="d"><b>D</b><code>print(...)</code></button></div>
+      <p class="why">The constructor only stores settings. <code>create()</code> is the call that travels to Groq and back.</p><button type="button" class="btn ghost retry">Try again</button></div>
+    <div class="mcq" data-ans="a"><p class="q">2. Why do we pass <code>base_url="https://api.groq.com/openai/v1"</code>?</p><div class="choices">
+      <button type="button" data-k="a"><b>A</b>Without it, the client sends requests to OpenAI's server by default</button>
+      <button type="button" data-k="b"><b>B</b>It makes the model faster</button>
+      <button type="button" data-k="c"><b>C</b>It stores the API key safely</button>
+      <button type="button" data-k="d"><b>D</b>It chooses the temperature</button></div>
+      <p class="why">The <code>OpenAI</code> class defaults to OpenAI's address. Groq speaks the same format, so changing the address (plus key and model) is all it takes.</p><button type="button" class="btn ghost retry">Try again</button></div>
+  </div>
+</section>
+
+<!-- ============ BUILD ============ -->
+<section id="build">
+  <h2>Today's build: Sweet Crumbs' first answer</h2>
+  <p>Same five lines, now with the bakery's facts in the system message and a low temperature, using everything from today.</p>
+<pre><code class="py">SYSTEM = """ROLE:   You are the assistant for Sweet Crumbs Home Bakery.
+FACTS:  We bake to order. Orders need 24 hours' notice. All cakes have eggless versions.
+        Plum cake Rs 500. Chocolate cake Rs 650. Cupcake Rs 80.
+RULES:  Never promise a delivery time. If the answer isn't in FACTS, say "I'll check with the owner."
+FORMAT: Under 50 words, friendly, English or Telugu matching the customer."""
+
+response = client.chat.completions.create(
+    model="openai/gpt-oss-20b",
+    temperature=0.2,                              # facts and prices: keep it focused
+    messages=[{"role": "system", "content": SYSTEM},
+              {"role": "user",   "content": "Can I get an eggless cake today evening?"}],
+)
+print(response.choices[0].message.content)
+print(response.usage)                             # tokens used = what you pay for</code></pre>
+  <div class="box real"><span class="tag">Expected behaviour</span><p>The bot should say eggless is available but orders need 24 hours' notice, so today evening isn't possible. If it promises "yes, today", read the system message again: which fact did it ignore?</p></div>
+
+  <h3>Your 10%: try it different ways</h3>
+  <ol>
+    <li><strong>Temperature:</strong> ask "Write a tagline for Sweet Crumbs" three times at 0.2, then three times at 1.2. Compare.</li>
+    <li><strong>Hallucination:</strong> delete the FACTS line and ask "Do you deliver to Kakinada?" What does it invent?</li>
+    <li><strong>No memory:</strong> make two separate calls: "My name is Ravi", then "What is my name?". Then put both in one messages list and try again.</li>
+    <li><strong>Tokens:</strong> ask the same question in English and in Telugu and compare <code>response.usage.prompt_tokens</code>.</li>
+    <li><strong>Your business:</strong> rewrite SYSTEM for the business you chose (5 facts, 3 rules) and ask 3 real customer questions.</li>
+  </ol>
+  <div class="box lens"><span class="tag">Before Day 2</span><p>Write down the 10 questions customers ask your business most. On Day 2 we turn them into a system prompt, a chatbot that remembers, and your first test file.</p></div>
+</section>
+
+<section id="wrap">
+  <h2>Summary: Day 1 in one table</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Idea</th><th>One line</th><th>Analogy</th></tr></thead>
+    <tbody>
+      <tr><td>Why now</td><td>Ready-made models through an API</td><td>Swiggy instead of a restaurant</td></tr>
+      <tr><td>LLM</td><td>Predicts the next token, in a loop</td><td>Super-autocomplete</td></tr>
+      <tr><td>Token</td><td>≈ ¾ word; the unit of cost and limits</td><td>Lego bricks</td></tr>
+      <tr><td>Temperature</td><td>Low = focused; high = creative</td><td>Strict evaluator vs creative teacher</td></tr>
+      <tr><td>No memory</td><td>Your code resends the history</td><td>Doctor + receptionist</td></tr>
+      <tr><td>Context window</td><td>One token budget, answer included</td><td>5-litre bottle</td></tr>
+      <tr><td>Hallucination</td><td>Plausible, not true; fix with facts</td><td>Bluffing in a viva → open-book exam</td></tr>
+      <tr><td>AI engineer</td><td>Builds products on existing models</td><td>Builds the car, not the engine</td></tr>
+      <tr><td>API call</td><td>Constructor once; <code>create()</code> per question</td><td>Set up the phone, then call</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  <p>Ai Agents Workshop · Level 1 · Day 1 tutorial, prepared 17 November 2026. Model names were checked in November 2026; check the provider's model list before teaching, as names change often. Token splits in the playground and videos are simplified to show the idea; real tokenizers differ.</p>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmt(n){return Math.round(n).toLocaleString('en-IN');}
+function hl(prefix,n,count){for(var i=0;i<count;i++){var el=$(prefix+i);if(el){el.classList.toggle('on',i===n);}}}
+
+/* ---------- 1. Token playground ---------- */
+(function(){
+  var inp=$('tok-in'); if(!inp) return;
+  var COMMON=new Set("the a an is are was were of to in on and or for with it this that be as at by from you your i we he she they my me our ai can will not no yes do does just like have has had more most very so but if then than what when how why who".split(" "));
+  var SUF=["ness","able","ing","tion","ment","ly","ed","er","est","ful","less","ous","ize","ise","ity"];
+  var PRE=["un","re","pre","dis","over","under","inter"];
+  function splitWord(w){
+    if(w.length<=6||COMMON.has(w.toLowerCase())) return [w];
+    var pieces=[],rest=w,tail=[],i;
+    for(i=0;i<PRE.length;i++){var p=PRE[i];if(rest.toLowerCase().indexOf(p)===0&&rest.length-p.length>=4){pieces.push(rest.slice(0,p.length));rest=rest.slice(p.length);break;}}
+    var changed=true;
+    while(changed&&rest.length>5){changed=false;for(i=0;i<SUF.length;i++){var s=SUF[i];if(rest.toLowerCase().slice(-s.length)===s&&rest.length-s.length>=3){tail.unshift(rest.slice(rest.length-s.length));rest=rest.slice(0,rest.length-s.length);changed=true;break;}}}
+    while(rest.length>6){pieces.push(rest.slice(0,4));rest=rest.slice(4);}
+    if(rest) pieces.push(rest);
+    return pieces.concat(tail);
+  }
+  function tokenize(text){
+    var out=[],m,re=/ ?[A-Za-z]+| ?\d{1,3}| ?[ऀ-෿]+|\s+| ?[^\s]/g;
+    while((m=re.exec(text))){
+      var t=m[0];
+      if(/^\s+$/.test(t)){out.push(t);continue;}
+      var lead=t[0]===' '?' ':'',body=lead?t.slice(1):t;
+      if(/[ऀ-෿]/.test(body)){
+        var ch=Array.from(body);
+        for(var k=0;k<ch.length;k+=2){out.push((k===0?lead:'')+ch.slice(k,k+2).join(''));}
+      }else if(/^[A-Za-z]+$/.test(body)){
+        var ps=splitWord(body);
+        ps.forEach(function(p,ix){out.push((ix===0?lead:'')+p);});
+      }else out.push(t);
+    }
+    return out;
+  }
+  function render(){
+    var text=inp.value,toks=tokenize(text);
+    $('tok-chips').innerHTML=toks.map(function(t,i){return '<span class="chip c'+(i%5)+'">'+esc(t)+'</span>';}).join('');
+    var words=text.trim()?text.trim().split(/\s+/).length:0, chars=Array.from(text).length;
+    $('tok-n').textContent=toks.length; $('tok-w').textContent=words; $('tok-c').textContent=chars;
+    $('tok-r').textContent=toks.length?(chars/toks.length).toFixed(1):'0';
+  }
+  inp.addEventListener('input',render);
+  document.querySelectorAll('[data-tok]').forEach(function(b){b.addEventListener('click',function(){inp.value=b.getAttribute('data-tok');render();});});
+  render();
+})();
+
+/* ---------- 2. Next-token loop stepper ---------- */
+(function(){
+  if(!$('nt-step')) return;
+  var Q='What is the capital of India? →', TOK=['The',' capital',' of',' India',' is',' New',' Delhi','.'];
+  var tokIx=0,stage=-1,timer=null;
+  function out(){var done=TOK.slice(0,tokIx).join('');$('nt-out').innerHTML=esc(Q)+' '+esc(done);}
+  function step(){
+    if(tokIx>=TOK.length){$('nt-status').innerHTML='Done: the model produced an end marker after "." and the loop stopped. Press <strong>Reset</strong> to replay.';hl('nt',-1,4);stop();return;}
+    stage=(stage+1)%4; hl('nt',stage,4);
+    var soFar=Q+' '+TOK.slice(0,tokIx).join('');
+    var msgs=[
+      'Step 1 · The text so far goes in: <em>"'+esc(soFar.trim())+'"</em>',
+      'Step 2 · It is split into about '+(7+tokIx)+' tokens.',
+      'Step 3 · The model scores every possible next token, e.g. <strong>"'+esc(TOK[tokIx].trim())+'"</strong> gets the highest probability.',
+      'Step 4 · Pick <strong>"'+esc(TOK[tokIx].trim())+'"</strong> and append it. Then loop back to step 1 with the longer text.'
+    ];
+    $('nt-status').innerHTML=msgs[stage];
+    if(stage===3){tokIx++;out();var spans=$('nt-out');spans.innerHTML=esc(Q)+' '+esc(TOK.slice(0,tokIx-1).join(''))+'<span class="new">'+esc(TOK[tokIx-1])+'</span>';}
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;$('nt-play').textContent='Play the loop';}}
+  $('nt-step').addEventListener('click',function(){stop();step();});
+  $('nt-play').addEventListener('click',function(){if(timer){stop();return;}$('nt-play').textContent='Pause';timer=setInterval(step,reduce?1400:650);});
+  $('nt-reset').addEventListener('click',function(){stop();tokIx=0;stage=-1;hl('nt',-1,4);out();$('nt-status').innerHTML='Press <strong>Next step</strong> to walk through one turn of the loop.';});
+  out();
+})();
+
+/* ---------- 3. Temperature ---------- */
+(function(){
+  var r=$('t-range'); if(!r) return;
+  var C=[['Python',3.0],['code',2.4],['my garage',1.9],['Lego',1.6],['the rain',1.0]];
+  var bars=$('t-bars');
+  bars.innerHTML=C.map(function(c,i){return '<div class="tbar" id="tb'+i+'"><span>'+c[0]+'</span><div class="track"><div class="fill"></div></div><span class="pct"></span></div>';}).join('');
+  function probs(T){var e=C.map(function(c){return Math.exp(c[1]/T);}),s=e.reduce(function(a,b){return a+b;},0);return e.map(function(x){return x/s;});}
+  function render(){
+    var T=parseFloat(r.value),p=probs(T);
+    $('t-val').textContent=T.toFixed(1);
+    $('t-mood').textContent=T<0.4?'focused: almost always the top word':T<=0.9?'balanced':'creative: surprising words appear';
+    p.forEach(function(x,i){var row=$('tb'+i);row.querySelector('.fill').style.width=(x*100).toFixed(1)+'%';row.querySelector('.pct').textContent=(x*100<1?(x*100).toFixed(1):Math.round(x*100))+'%';});
+    return p;
+  }
+  function sample(){var p=render(),u=Math.random(),acc=0;for(var i=0;i<p.length;i++){acc+=p[i];if(u<=acc)return i;}return p.length-1;}
+  function flash(i){document.querySelectorAll('#t-bars .tbar').forEach(function(b,j){b.classList.toggle('hit',j===i);});}
+  r.addEventListener('input',render);
+  document.querySelectorAll('[data-t]').forEach(function(b){b.addEventListener('click',function(){r.value=b.getAttribute('data-t');render();});});
+  $('t-sample').addEventListener('click',function(){var i=sample();flash(i);$('t-out').innerHTML='I love building things in <span class="new">'+C[i][0]+'</span>';});
+  $('t-sample10').addEventListener('click',function(){var cnt=C.map(function(){return 0;}),last=0;for(var k=0;k<10;k++){last=sample();cnt[last]++;}flash(last);
+    $('t-out').innerHTML='10 samples at T = '+parseFloat(r.value).toFixed(1)+': '+C.map(function(c,i){return cnt[i]?('<span class="new">'+c[0]+' ×'+cnt[i]+'</span>'):'';}).filter(Boolean).join(' ');});
+  render();
+})();
+
+/* ---------- 4. Context window ---------- */
+(function(){
+  var d=$('cw-doc'); if(!d) return;
+  var h=$('cw-his'),TOTAL=128000,SYS=1000,ANS=4000;
+  function seg(cls,w,label,pctTotal){return '<div class="'+cls+'" style="width:'+w+'%" title="'+label+'">'+(pctTotal>16?label.split(' ')[0]:'')+'</div>';}
+  function render(){
+    var doc=+d.value,his=+h.value; $('cw-doc-v').textContent=fmt(doc); $('cw-his-v').textContent=fmt(his);
+    var used=SYS+his+doc+ANS,base=Math.max(TOTAL,used),over=Math.max(0,used-TOTAL);
+    function pc(x){return x/base*100;}
+    var html=seg('sys',pc(SYS),'system',pc(SYS))+seg('his',pc(his),'history '+fmt(his),pc(his))+seg('doc',pc(doc),'documents '+fmt(doc),pc(doc));
+    if(over>0){html+=seg('over',pc(ANS),'no room for answer',pc(ANS)+8);}
+    else{html+=seg('ans',pc(ANS),'answer',pc(ANS)+8)+'<div style="width:'+pc(TOTAL-used)+'%"></div>';}
+    $('cw-bar').innerHTML=html;
+    var st=$('cw-status');
+    if(over>0){st.style.background='var(--danger-soft)';st.style.borderLeftColor='var(--danger)';st.innerHTML='<strong>Over the limit by '+fmt(over)+' tokens.</strong> The request is rejected or the reply gets cut off. Send one document at a time, trim it, or summarise old messages.';}
+    else{st.style.background='';st.style.borderLeftColor='';st.innerHTML='<strong>'+fmt(used)+'</strong> of 128,000 tokens used, '+fmt(TOTAL-used)+' free. You pay for all '+fmt(used-ANS)+' input tokens on <em>every</em> call, and more tokens also means a slower reply.';}
+  }
+  d.addEventListener('input',render); h.addEventListener('input',render); render();
+})();
+
+/* ---------- 5. Fill in the blank ---------- */
+(function(){
+  if(!$('fb-opts')) return;
+  var S=[
+    {pre:'The barista handed me a hot cup of ',post:'.',ans:'coffee',p:{coffee:71,tea:24,sunshine:1,shoes:0.5}},
+    {pre:'Hyderabad is famous for its ',post:'.',ans:'biryani',p:{biryani:48,Charminar:30,pearls:12,snow:0.2}},
+    {pre:'Please submit the assignment before the ',post:'.',ans:'deadline',p:{deadline:63,weekend:14,exam:9,banana:0.1}}
+  ],ix=0;
+  function load(){
+    var s=S[ix],words=Object.keys(s.p).sort(function(){return Math.random()-0.5;});
+    $('fb-sent').innerHTML=esc(s.pre)+'<strong>______</strong>'+esc(s.post);
+    $('fb-opts').innerHTML=words.map(function(w){return '<button class="opt" type="button" data-w="'+w+'">'+w+'</button>';}).join('');
+    $('fb-bars').innerHTML='';
+    $('fb-status').innerHTML='Pick the word you think fills the blank. The original sentence on the internet is the answer key.';
+    $('fb-opts').querySelectorAll('.opt').forEach(function(b){b.addEventListener('click',function(){pick(b.getAttribute('data-w'));});});
+  }
+  function pick(w){
+    var s=S[ix];
+    $('fb-opts').querySelectorAll('.opt').forEach(function(b){var x=b.getAttribute('data-w');b.classList.toggle('right',x===s.ans);b.classList.toggle('wrong',x===w&&x!==s.ans);b.disabled=true;});
+    $('fb-sent').innerHTML=esc(s.pre)+'<span class="new">'+esc(s.ans)+'</span>'+esc(s.post);
+    var keys=Object.keys(s.p).sort(function(a,b){return s.p[b]-s.p[a];});
+    $('fb-bars').innerHTML='<p class="note" style="margin:4px 0">What a trained model might predict:</p>'+keys.map(function(k){return '<div class="tbar'+(k===w?' hit':'')+'"><span>'+k+'</span><div class="track"><div class="fill" style="width:'+s.p[k]+'%"></div></div><span class="pct">'+(s.p[k]<1?s.p[k]:Math.round(s.p[k]))+'%</span></div>';}).join('');
+    var plausible=s.p[w]>=5&&w!==s.ans;
+    $('fb-status').innerHTML=(w===s.ans?'<strong>Correct.</strong> ':plausible?'<strong>Plausible, but the original text said "'+s.ans+'".</strong> ':'<strong>Not likely.</strong> ')+
+      'The hidden word in the real sentence is the answer key. During training, the model nudges its scores toward "'+s.ans+'"; a near miss gets a small correction, a silly guess a big one. Repeat billions of times and grammar, context and world knowledge emerge.';
+  }
+  $('fb-next').addEventListener('click',function(){ix=(ix+1)%S.length;load();});
+  load();
+})();
+
+/* ---------- 6. Constructor lookup ---------- */
+(function(){
+  if(!$('lk-out')) return;
+  var ids=['lk-arg-key','lk-env-key','lk-arg-url','lk-env-url'];
+  function render(){
+    var ak=$('lk-arg-key').checked,ek=$('lk-env-key').checked,au=$('lk-arg-url').checked,eu=$('lk-env-url').checked;
+    var args=[];if(ak)args.push('api_key=os.getenv("GROQ_API_KEY")');if(au)args.push('base_url="https://api.groq.com/openai/v1"');
+    var code='client = OpenAI('+args.join(', ')+')\n\n';
+    var kstep=ak?0:ek?1:2; hl('lk',-1,0);
+    ['lk1','lk2','lk3','lr1','lr2','lr3'].forEach(function(id){var e=$(id);if(e)e.classList.remove('on');});
+    $('lk'+(kstep+1)).classList.add('on');$('lr'+(kstep+1)).classList.add('on');
+    var lines;
+    if(kstep===2){lines='api_key  → ✗ OpenAIError: The api_key client option must be set\n           (raised immediately; base_url is never reached)';}
+    else{
+      var key=ak?'your Groq key (passed as an argument)':'value of OPENAI_API_KEY (environment)';
+      var url=au?'https://api.groq.com/openai/v1 (argument)':eu?'value of OPENAI_BASE_URL (environment)':'https://api.openai.com/v1 (built-in default)';
+      lines='api_key  → '+key+'\nbase_url → '+url+'\n\n✓ client created. No network call yet.';
+      if(ak&&!au&&!eu)lines+='\n⚠ A Groq key sent to OpenAI\'s server will fail with 401 at .create().';
+      if(!ak&&ek&&au)lines+='\n⚠ OPENAI_API_KEY usually holds an OpenAI key; sending it to Groq fails with 401 at .create().';
+    }
+    $('lk-out').textContent=code+lines;
+  }
+  ids.forEach(function(id){$(id).addEventListener('change',render);}); render();
+})();
+
+/* ---------- 7. Request journey ---------- */
+(function(){
+  var go=$('rj-go'); if(!go) return;
+  var T={
+    0:'1 · Your code calls <code>client.chat.completions.create(model=…, messages=…)</code>. Your program now waits on this line.',
+    1:'2 · The library packs model + messages into JSON and adds the header <code>Authorization: Bearer gsk_…</code> from the stored api_key.',
+    2:'3 · HTTPS POST to <code>https://api.groq.com/openai/v1/chat/completions</code>: stored base_url + /chat/completions.',
+    3:'4 · Groq\'s servers run the model: tokens in, the next-token loop, reply out.',
+    4:'5 · The reply comes back as JSON: <code>id</code>, <code>model</code>, <code>choices</code>, <code>usage</code>.',
+    5:'6 · The library parses the JSON into a <code>ChatCompletion</code> object (Pydantic).',
+    6:'7 · Your code continues: <code>response.choices[0].message.content</code> holds the text. Done.',
+    x3:'4 · Groq replies <strong>429 Too Many Requests</strong>: you sent too much too fast.',
+    r5:'↻ The library sees 429, waits briefly and <strong>retries automatically</strong> (max_retries = 2). Your code never notices.'
+  };
+  function run(){
+    var seq=$('rj-429').checked?[0,1,2,'x3','r5',2,3,4,5,6]:[0,1,2,3,4,5,6],k=0;
+    go.disabled=true;
+    (function tick(){
+      if(k>=seq.length){go.disabled=false;setTimeout(function(){hl('rj',-1,7);},1200);return;}
+      var s=seq[k],n=typeof s==='number'?s:parseInt(String(s).slice(1),10);
+      hl('rj',n,7);
+      var st=$('rj-status');st.innerHTML=T[s];
+      if(s==='x3'){$('rj3').classList.remove('on');$('rj3').setAttribute('class','bd on');}else{$('rj3').setAttribute('class',$('rj3').classList.contains('on')?'ba on':'ba');}
+      k++;setTimeout(tick,reduce?1600:1100);
+    })();
+  }
+  go.addEventListener('click',run);
+})();
+
+/* ---------- 8. History growth ---------- */
+(function(){
+  if(!$('mem-next')) return;
+  var SYS='You are a friendly assistant.';
+  var U=['My name is Kiran.','I teach communication skills.','Suggest a title for my AI workshop.','What\'s my name again?'];
+  var A=['Nice to meet you, Kiran!','That\'s a great field. How can I help?','"Speak Human: Communication in the Age of AI"','Your name is Kiran.'];
+  var AF=['Nice to meet you, Kiran!','Great! What would you like help with?','Sure. What is the workshop about, and who is it for?','Sorry, I don\'t know your name. I only see this one message.'];
+  var hist,turn,total;
+  function tok(t){return Math.ceil(t.length/4)+4;}
+  function reset(){hist=[{role:'system',content:SYS}];turn=0;total=0;$('mem-next').disabled=false;$('mem-calls').textContent='0';$('mem-sent').textContent='0';$('mem-tok').textContent='0';$('mem-total').textContent='0';draw([],0);$('mem-status').innerHTML='Press <strong>Send next message</strong> to make a call.';}
+  function draw(list,freshFrom){
+    $('mem-hist').innerHTML=list.map(function(m,i){return '<div class="r-'+m.role+(i>=freshFrom?' fresh':'')+'"><strong>'+m.role+':</strong> '+esc(m.content)+'</div>';}).join('');
+  }
+  function next(){
+    if(turn>=U.length) return;
+    var forget=$('mem-forget').checked;
+    hist.push({role:'user',content:U[turn]});
+    var sent=forget?[hist[0],hist[hist.length-1]]:hist.slice();
+    var pt=sent.reduce(function(a,m){return a+tok(m.content);},0); total+=pt;
+    var reply=forget?AF[turn]:A[turn];
+    hist.push({role:'assistant',content:reply});
+    $('mem-calls').textContent=turn+1;$('mem-sent').textContent=sent.length;$('mem-tok').textContent=pt;$('mem-total').textContent=total;
+    draw(sent.concat([{role:'assistant',content:reply}]),forget?1:sent.length-1);
+    $('mem-status').innerHTML='Call '+(turn+1)+' sent the <strong>'+sent.length+' messages</strong> shown above (the last line is the reply that comes back). '+
+      (forget?'<strong>Bug mode:</strong> only the system message and the newest question were sent, so the model has no idea what came before.':'Everything is resent every time, so prompt tokens grow on each call.');
+    turn++; if(turn>=U.length){$('mem-next').disabled=true;}
+  }
+  $('mem-next').addEventListener('click',next);$('mem-reset').addEventListener('click',reset);
+  $('mem-forget').addEventListener('change',reset);
+  reset(); next();
+})();
+
+/* ---------- 9. Response path walk ---------- */
+(function(){
+  var go=$('rt-go'); if(!go) return;
+  var P=[['response','# ChatCompletion: the whole parcel'],['response.choices','# list of Choice objects (one, unless n > 1)'],['response.choices[0]','# the first Choice'],['response.choices[0].message','# ChatCompletionMessage, role = "assistant"'],['response.choices[0].message.content','# str: "Why did the programmer quit his job? He didn\'t get arrays!"']];
+  go.addEventListener('click',function(){
+    var k=0;go.disabled=true;
+    (function tick(){
+      if(k>=P.length){go.disabled=false;return;}
+      hl('rt',k,5);$('rt-out').textContent=P[k][0]+'\n'+P[k][1];k++;setTimeout(tick,reduce?1500:1000);
+    })();
+  });
+})();
+})();
+</script>
+<script>
+/* ---------- Animated videos ---------- */
+(function(){
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var S={
+ v1:[
+  {show:['lab','years'],cap:'For about 70 years, AI lived in research labs. Building it took PhDs, years of work and big budgets.'},
+  {show:['lab','years','a1','tr'],hl:['tr'],cap:'2017: researchers publish the Transformer, the engine inside GPT, Claude, Gemini and Llama.'},
+  {show:['lab','a1','tr','a2','gpt'],hl:['gpt'],cap:'November 2022: ChatGPT puts that engine in front of everyone.'},
+  {show:['lab','a1','tr','a2','gpt','a3','api'],hl:['api'],cap:'AI companies now rent their models through an API: your code sends a request, their server sends back an answer.'},
+  {show:['lab','a1','tr','a2','gpt','a3','api','a4','you'],hl:['you'],cap:'So you don’t build the brain. You call it with a few lines of code.'},
+  {show:['lab','a1','tr','a2','gpt','a3','api','a4','you','apps'],hl:['you'],cap:'And build anything on top: a support bot, a resume matcher, a bakery order bot. That’s what we do in this workshop.'}],
+ v2:[
+  {show:['sent'],txt:{st:'The capital of India is ___'},cap:'The model is given some text and must continue it.'},
+  {show:['sent','tok'],cap:'First the text is cut into tokens, small pieces of words.'},
+  {show:['sent','tok','model','bars'],txt:{l1:'New',l2:'the',l3:'Delhi',p1:'82%',p2:'9%',p3:'5%'},mv:{b1:'scaleX(.82)',b2:'scaleX(.09)',b3:'scaleX(.05)'},cap:'The model gives every possible next token a score. Here “New” scores highest.'},
+  {show:['sent','tok','model','bars'],txt:{st:'The capital of India is New'},cap:'One token is picked and added to the text.'},
+  {show:['sent','model','bars'],txt:{st:'The capital of India is New ___',l1:'Delhi',l2:'York',l3:'India',p1:'91%',p2:'4%',p3:'2%'},mv:{b1:'scaleX(.91)',b2:'scaleX(.04)',b3:'scaleX(.02)'},cap:'Then the whole loop runs again with the longer text. Now “Delhi” wins.'},
+  {show:['sent','model','bars'],txt:{st:'The capital of India is New Delhi.'},cap:'Then a full stop, then a stop marker. Every reply you have ever seen from ChatGPT was built this way, one token at a time.'}],
+ v3:[
+  {show:['word'],cap:'A model never reads whole words. It reads tokens.'},
+  {show:['bricks'],cap:'A long, rare word is split into familiar pieces: un · believ · able · ness. Four tokens.'},
+  {show:['bricks','en'],cap:'Common English words usually stay whole, so a short English sentence needs only a few tokens.'},
+  {show:['bricks','en','te'],hl:['te'],cap:'The same message in Telugu is cut into many more pieces.'},
+  {show:['en','te','cost'],hl:['cost'],cap:'And you pay per token. So the same chatbot costs more in Telugu, and long chats cost more than short ones.'}],
+ v4:[
+  {show:['q','dial'],mv:{needle:'rotate(-60deg)'},txt:{tv:'T = 0.2'},cap:'Same prompt, asked three times. The temperature dial is set low: 0.2.'},
+  {show:['q','dial','a1','a2','a3'],txt:{t1:'Freshly baked, made with love.',t2:'Freshly baked, made with love.',t3:'Freshly baked, made with love.'},cap:'Low temperature: almost the same answer every time. Perfect for prices, orders and scores.'},
+  {show:['q','dial'],mv:{needle:'rotate(55deg)'},txt:{tv:'T = 1.2'},cap:'Now turn the dial up to 1.2 and ask the same three times.'},
+  {show:['q','dial','a1','a2','a3'],txt:{t1:'Freshly baked, made with love.',t2:'Where every crumb tells a story.',t3:'Happiness, baked to order.'},cap:'High temperature: a different answer each time. Great for posts and ideas, risky for prices.'},
+  {show:['q','dial','a1','a2','a3'],hl:['a2','a3'],cap:'The rule: facts → low temperature. Creativity → high temperature.'}],
+ v5:[
+  {show:['doc','pat','pb'],mv:{pat:'translate(340px,0px)'},txt:{pbt:'I’m Ravi. I have a cough.'},cap:'Visit 1: Ravi tells the doctor his name and his problem.'},
+  {show:['doc','pat','db'],mv:{pat:'translate(0px,0px)'},txt:{dbt:'(forgets everything)'},cap:'Ravi leaves, and the doctor forgets him completely. That’s the model: nothing is kept between calls.'},
+  {show:['doc','pat','pb','db'],mv:{pat:'translate(340px,0px)'},txt:{pbt:'Hello doctor, it’s me again!',dbt:'Sorry… who are you?'},hl:['db'],cap:'Visit 2, no file: the doctor has no idea who Ravi is.'},
+  {show:['doc','pat','db','rec','file'],mv:{pat:'translate(340px,0px)'},txt:{dbt:'Sorry… who are you?'},cap:'So the receptionist keeps a case file with everything said so far…'},
+  {show:['doc','pat','db','rec','file'],mv:{pat:'translate(340px,0px)',file:'translate(374px,-22px)'},txt:{dbt:'Ah Ravi! How’s the cough?'},hl:['doc'],cap:'…and hands it over at every visit. Now the doctor “remembers”.'},
+  {show:['doc','pat','db','rec','file'],mv:{pat:'translate(340px,0px)',file:'translate(374px,-22px)'},hl:['rec'],cap:'Your code is the receptionist: it resends the whole conversation with every API call.'}],
+ v6:[
+  {show:['tank'],cap:'Every call has a fixed budget of tokens: the context window.'},
+  {show:['tank','sys'],mv:{'sys>rect':'scaleX(1)'},cap:'Your instructions, the system message, go in first.'},
+  {show:['tank','sys','his'],mv:{'sys>rect':'scaleX(1)','his>rect':'scaleX(1)'},cap:'Then the chat history your code resends.'},
+  {show:['tank','sys','his','doc'],mv:{'sys>rect':'scaleX(1)','his>rect':'scaleX(1)','doc>rect':'scaleX(1)'},cap:'Then any documents you paste in.'},
+  {show:['tank','sys','his','doc','ans'],mv:{'sys>rect':'scaleX(1)','his>rect':'scaleX(1)','doc>rect':'scaleX(1)','ans>rect':'scaleX(1)'},cap:'And the answer must fit in the same budget.'},
+  {show:['tank','sys','his','doc','ans','over','msg'],mv:{'sys>rect':'scaleX(1)','his>rect':'scaleX(1)','doc>rect':'scaleX(1)','ans>rect':'scaleX(1)','over>rect':'scaleX(1)'},hl:['msg'],cap:'Paste too much and there’s no room left for the answer. Send less, and send it smarter.'}],
+ v7:[
+  {show:['l1','q1'],cap:'A customer asks an airline chatbot whether a fare discount can be claimed after travelling.'},
+  {show:['l1','q1','a1','m1'],cap:'The chatbot has no policy document in front of it.'},
+  {show:['l1','q1','a1','m1','a2','r1'],cap:'So it writes what sounds right: “Yes, apply within 90 days.”'},
+  {show:['l1','q1','a1','m1','a2','r1','stamp'],hl:['r1'],cap:'But the real policy said no. In 2024 a tribunal ordered Air Canada to compensate the customer for its chatbot’s wrong answer.'},
+  {show:['l1','q1','a1','m1','a2','r1','stamp','l2','q2','a3','m2'],cap:'The fix: put the real policy in the prompt and say “answer only from this”. That’s RAG, an open-book exam.'},
+  {show:['l1','q1','a1','m1','a2','r1','stamp','l2','q2','a3','m2','a4','r2'],hl:['r2'],cap:'Now the answer is grounded in the facts, or it says “not found”. Trust, but verify.'}],
+ v8:[
+  {show:['s1'],hl:['s1'],cap:'Step 1 · Connect: create a client with your key and the provider’s address.'},
+  {show:['s1','a1','s2'],hl:['s2'],cap:'Step 2 · Give context: the bakery’s menu, prices and rules go into the prompt.'},
+  {show:['s1','a1','s2','a2','s3'],hl:['s3'],cap:'Step 3 · Get the answer: read the reply from the response.'},
+  {show:['s1','a1','s2','a2','s3','a3','s4'],hl:['s4'],cap:'Step 4 · Wrap it in a UI: a Telegram bot customers can message.'},
+  {show:['s1','a1','s2','a2','s3','a3','s4','all'],hl:['all'],cap:'Every AI product follows these four steps. Only the context and the interface change.'}],
+ v9:[
+  {show:['lap','srv'],hl:['lap'],cap:'Your notebook calls client.chat.completions.create with a model name and messages.'},
+  {show:['lap','srv','env'],cap:'The library packs them into a JSON request.'},
+  {show:['lap','srv','env','key'],hl:['env'],cap:'It attaches your API key, like an ID stamp: who you are, who pays.'},
+  {show:['lap','srv','env','key','path'],mv:{env:'translate(232px,0px)'},cap:'And posts it to the base_url you gave the constructor, plus /chat/completions.'},
+  {show:['lap','srv','path'],hl:['srv'],mv:{env:'translate(232px,0px)'},cap:'Groq’s server runs the model: the next-token loop, until the reply is done.'},
+  {show:['lap','srv','rep'],cap:'A JSON reply comes back with the answer and the token usage.'},
+  {show:['lap','srv','rep'],mv:{rep:'translate(-232px,0px)'},hl:['lap'],cap:'Your program, which was waiting on that line, receives it.'},
+  {show:['lap','srv','rep','open'],mv:{rep:'translate(-232px,0px)'},hl:['open'],cap:'You open it layer by layer: response.choices[0].message.content. That’s your answer.'}]
+};
+function fmt(s){s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+('0'+s%60).slice(-2);}
+document.querySelectorAll('.vid').forEach(function(box){
+  var id=box.getAttribute('data-vid'),sc=S[id];if(!sc)return;
+  var svg=box.querySelector('svg'),cap=box.querySelector('.vid-cap'),btn=box.querySelector('.vid-play'),prog=box.querySelector('.vid-prog'),bar=prog.firstElementChild,tm=box.querySelector('.vid-time'),voice=box.querySelector('.vid-voice');
+  var dur=sc.map(function(s){return Math.max(3.2,s.cap.length/16);}),total=dur.reduce(function(a,b){return a+b;},0);
+  var starts=[],acc=0;dur.forEach(function(d){starts.push(acc);acc+=d;});
+  var els=svg.querySelectorAll('[id^="'+id+'-"]'),orig={};
+  els.forEach(function(e){if(e.tagName==='text')orig[e.id]=e.textContent;});
+  function el(k){var p=k.split('>');var e=svg.querySelector('#'+id+'-'+p[0]);return p[1]&&e?e.querySelector(p[1]):e;}
+  var cur=-1,t=0,playing=false,last=0,raf=null;
+  function apply(i){
+    if(i===cur)return;cur=i;var s=sc[i];
+    svg.querySelectorAll('.ve').forEach(function(e){var k=e.id.slice(id.length+1);e.classList.toggle('show',s.show.indexOf(k)>=0);});
+    svg.querySelectorAll('.on').forEach(function(e){e.classList.remove('on');});
+    (s.hl||[]).forEach(function(k){var e=el(k);if(!e)return;var r=e.tagName==='rect'?e:e.querySelector('rect');if(r)r.classList.add('on');});
+    svg.querySelectorAll('[data-t0]').forEach(function(e){e.style.transform=e.getAttribute('data-t0');});
+    Object.keys(orig).forEach(function(k){var e=svg.querySelector('#'+k);if(e)e.textContent=orig[k];});
+    for(var j=0;j<=i;j++){var m=sc[j].mv||{},x=sc[j].txt||{};
+      Object.keys(m).forEach(function(k){var e=el(k);if(e)e.style.transform=m[k];});
+      Object.keys(x).forEach(function(k){var e=el(k);if(e)e.textContent=x[k];});}
+    cap.textContent=s.cap;
+    if(voice.checked&&playing&&window.speechSynthesis){try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(s.cap);u.lang='en-IN';u.rate=1.02;speechSynthesis.speak(u);}catch(e){}}
+  }
+  function idx(tt){for(var i=starts.length-1;i>=0;i--){if(tt>=starts[i])return i;}return 0;}
+  function draw(){bar.style.width=(t/total*100)+'%';tm.textContent=fmt(t)+' / '+fmt(total);}
+  function frame(now){if(!playing)return;t+=(now-last)/1000;last=now;
+    if(t>=total){t=total;draw();pause();btn.textContent='Replay';return;}
+    apply(idx(t));draw();raf=requestAnimationFrame(frame);}
+  function play(){if(t>=total){t=0;cur=-1;}playing=true;btn.textContent='Pause';last=performance.now();apply(idx(t));raf=requestAnimationFrame(frame);}
+  function pause(){playing=false;if(raf)cancelAnimationFrame(raf);if(btn.textContent==='Pause')btn.textContent='Play';try{if(window.speechSynthesis)speechSynthesis.cancel();}catch(e){}}
+  btn.addEventListener('click',function(){playing?pause():play();});
+  prog.addEventListener('click',function(ev){var r=prog.getBoundingClientRect();t=Math.min(total-0.01,Math.max(0,(ev.clientX-r.left)/r.width*total));cur=-1;apply(idx(t));draw();if(!playing)btn.textContent='Play';});
+  voice.addEventListener('change',function(){if(!voice.checked){try{speechSynthesis.cancel();}catch(e){}}});
+  draw();
+});
+})();
+
+/* ---------- MCQ quiz ---------- */
+(function(){
+  var all=document.querySelectorAll('.mcq'),right=0;
+  var sn=document.getElementById('sc-n'),sb=document.getElementById('sc-bar');
+  document.getElementById('sc-t').textContent=all.length;
+  function upd(){sn.textContent=right;sb.style.width=(right/all.length*100)+'%';}
+  all.forEach(function(q){
+    var ans=q.getAttribute('data-ans'),bs=q.querySelectorAll('.choices button'),why=q.querySelector('.why'),scored=false,base=why.innerHTML;
+    bs.forEach(function(b){b.addEventListener('click',function(){
+      var k=b.getAttribute('data-k'),ok=k===ans;
+      bs.forEach(function(x){x.disabled=true;x.classList.toggle('right',x.getAttribute('data-k')===ans);});
+      if(!ok)b.classList.add('wrong');
+      why.innerHTML=(ok?'<strong>Correct.</strong> ':'<strong>Not quite.</strong> ')+base;
+      q.classList.add('done');
+      if(ok&&!scored){scored=true;right++;upd();}
+    });});
+    q.querySelector('.retry').addEventListener('click',function(){bs.forEach(function(x){x.disabled=false;x.classList.remove('right','wrong');});q.classList.remove('done');});
+  });
+  upd();
+})();
+
+</script>
+<script>
+// Tiny Python highlighter: comments, strings, keywords, numbers.
+(function(){
+  var KW=/\b(import|from|def|return|class|if|else|elif|for|in|while|try|except|as|with|None|True|False|print|lambda|is|not|and|or|raise|self)\b/;
+  document.querySelectorAll('pre code.py').forEach(function(el){
+    var src=el.textContent, out='', re=/(#[^\n]*)|("""[\s\S]*?"""|f?"[^"\n]*"|f?'[^'\n]*')|\b(import|from|def|return|class|if|else|elif|for|in|while|try|except|as|with|None|True|False|print|lambda|is|not|and|or|raise|self)\b|\b(\d+(?:\.\d+)?)\b/g, last=0, m;
+    function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    while((m=re.exec(src))){
+      out+=esc(src.slice(last,m.index));
+      var cls=m[1]?'c':m[2]?'s':m[3]?'k':'n';
+      out+='<span class="'+cls+'">'+esc(m[0])+'</span>';
+      last=re.lastIndex;
+    }
+    out+=esc(src.slice(last));
+    el.innerHTML=out;
+  });
+})();
+</script>
+</body>
+</html>
