@@ -1,4 +1,4 @@
-# # Agentic AI 
+# Agentic AI 
 
 This repository contains my learning materials, Python implementations, practical exercises, and experiments as part of my Agentic AI training program.
 
