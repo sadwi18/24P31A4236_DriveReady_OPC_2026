@@ -1,45 +1,34 @@
-# Day 1 – How LLMs Work and Your First API Call
+# Day 1 — E-Commerce Customer Support Assistant (ShopSphere)
 
-This folder contains the Day 1 learning material and practical implementation from my Agentic AI training.
+## Overview
+This folder contains the Day 1 implementation for the **Drive Ready – AI Agents | One Person Company (OPC) Initiative** at Aditya University. The project adapts foundational LLM API experiments to **ShopSphere Online Store**, an e-commerce customer support use case.
 
-## Topics Covered
+## Files in This Folder
+- `day1_shopsphere.ipynb`: Google Colab notebook implementing Groq API calls (`openai/gpt-oss-20b`) and five core LLM behavior experiments for ShopSphere.
+- `README.md`: Documentation of setup, experiments, and key observations.
 
-1. Why AI is becoming widely used.
-2. What a Large Language Model (LLM) does.
-3. Understanding tokens.
-4. Temperature and model creativity.
-5. Understanding why LLMs do not automatically remember previous conversations.
-6. Context windows.
-7. How LLMs are trained and why hallucinations occur.
-8. The role of an AI Engineer.
-9. Making the first API call.
+## Setup & Execution
+1. Open `day1_shopsphere.ipynb` in Google Colab.
+2. Add your Groq API key in **Colab Secrets** under the name `GROQ_API_KEY` (no API keys are hardcoded in the notebook).
+3. Run all cells sequentially.
 
-## Practical Implementation
+## Experiments & Key Observations
+1. **Temperature Comparison (`0.2` vs. `1.2`)**
+   - Tested slogan generation for ShopSphere across three runs at each setting.
+   - `temperature=0.2` produced consistent, focused slogans; `temperature=1.2` generated noticeably more varied and creative phrasing.
 
-### Project: Sweet Crumbs Home Bakery Assistant
+2. **Hallucination & Grounding Test**
+   - Without store policies in the system prompt, the model risked guessing or generalizing delivery availability.
+   - Adding explicit shipping facts and an escalation rule ("state that you will check with the support team") prevented fabricated guarantees.
 
-A simple chatbot developed using Python, LangChain, and the Groq API.
+3. **Stateless Calls vs. Conversation Memory**
+   - Separate API calls do not retain user context across turns (`"What is my name?"` failed when sent alone).
+   - Passing prior `user` and `assistant` turns inside a single `messages` list enabled accurate multi-turn recall.
 
-**Implementation includes:**
-- Groq API integration.
-- LLM initialization.
-- System prompt configuration.
-- Chatbot function.
-- Customer query handling.
-- Prompt Guard demonstration.
+4. **Token Usage Comparison (English vs. Telugu)**
+   - Compared `usage.prompt_tokens` for identical customer queries in English and Telugu.
+   - Non-English scripts required more prompt tokens for the same semantic query.
 
-## Files
-
-| File | Description |
-|---|---|
-| `lesson.html` | Interactive Day 1 learning material |
-| `agenticAI_Day1.ipynb` | Python implementation with code cells and execution outputs |
-
-## Tools Used
-
-- Python
-- LangChain
-- Groq API
-- Google Colab
-- LLMs
-
+5. **ShopSphere E-Commerce System Prompt**
+   - Configured a structured `system` prompt containing **5 store facts** (product catalog & prices, 7-day return window, 3–5 day shipping & free shipping threshold, accepted payment methods, support hours) and **3 strict rules** (fact-only answers, under-60-word clarity, and support escalation for unknown or order-specific queries).
+   - Verified accurate responses across pricing, return eligibility, and out-of-scope order tracking queries.
