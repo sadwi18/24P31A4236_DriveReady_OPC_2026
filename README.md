@@ -13,11 +13,13 @@ Designed to handle storefront queries accurately without hallucinating store pol
 - Guardrails: Grounded responses with escalation to support for unverified promises or out-of-stock items
 
 ## Repository Map
+```
 24P31A4236_DriveReady_OPC_2026/
 ├── Day_1/   # Groq API basics, temperature tuning, policy grounding & memory
 ├── Day_2/   # Structured prompts, JSON extraction, @log_call & safe chat loop
 ├── Day_3/   # LangChain pipeline, tests.csv evaluation & tool-ready functions
 └── README.md
+```
 
 ## Progression Log
 - Day 1 — Foundations: Built baseline Groq calls (openai/gpt-oss-20b), tested temperature (0.2 vs. 1.2), grounded store rules, and compared token usage across prompts.
